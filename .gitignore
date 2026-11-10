@@ -1,0 +1,15 @@
+.venv/
+__pycache__/
+*.pyc
+.env
+runs/
+data/m3bench/videos/
+data/m3bench/subtitles/
+data/m3bench/.cache/
+data/cache/
+.pytest_cache/
+*.egg-info/
+data/ui_clips/
+*.log
+*.part
+*.part.mp4

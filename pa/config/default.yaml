@@ -1,0 +1,84 @@
+# 默认配置（设计文档 §11.2）。命令行 --config 指定的文件会与此合并。
+session:
+  camera_mode: fixed          # fixed | egocentric
+  role: "个人助理：尽量少打扰，只在可能造成实际损失时提醒"
+  permissions: {may_ask: true, may_remind: true}
+source:
+  sample_fps: 5
+  short_side: 448
+gate:
+  theta_change: 0.08
+  theta_settle: 0.02
+  settle_ms: 350
+  max_settle_ms: 1500
+  heartbeat_s: 4.0
+  focus_heartbeat_s: 1.5
+  min_gap_ms: 800
+  frames_per_window: 3
+speech:
+  provider: none              # none | srt | whisper
+  srt_latency_ms: 500
+  whisper_model: small
+  chunk_s: 8
+faces:
+  enabled: false              # 需要 insightface（见 README）
+perception:
+  provider: scripted          # scripted | openai | dashscope | ollama | <providers 中任一键>
+  model: ""
+  workers: 3
+  timeout_s: 8
+  cache: true
+  extra: {}
+state:
+  tick_ms: 250
+  snapshot_every_versions: 50
+  ttl_s: {activity: 8, near: 5, presence: 6}  # presence 需大于心跳间隔
+agenda:
+  templates: null             # null = 内置 pa/agenda/templates.yaml
+  disarm_debounce_s: 3
+  redecide_min_s: 5
+decision:
+  provider: rule              # rule | llm | jev
+  model: ""                   # jev: jev-latest（实验时锁定 jev-1.14.0）；llm: 模型名
+  llm_provider: openai
+  warranted_threshold: 0.7
+  timeout_s: 2
+  on_unavailable: wait        # wait | rule_ask
+  rule_latency_ms: 800
+response:
+  provider: template          # template | llm
+  model: ""
+  llm_provider: openai
+  strategy: prefetch_llm      # prefetch_llm | template_first | llm_first
+  ttft_fallback_ms: 600
+proactive:                    # 主动决策核心：机会 → 价值估计 → 价值门控（设计说明 §4–§5）
+  enabled: true               # false 时退回旧路径：需求 fire → 决策模型直接给 WAIT/ASK/REMIND
+  costs: null                 # null = 内置 pa/value/costs.yaml
+  prefetch: true              # 机会变热时预生成草稿与语音
+  model_estimates: true       # 用 decision 模型回答类型化概率问题（p_cond、q）
+  open: true                  # 开放发现（需要 slow.provider=llm）
+  open_every_s: 30
+  open_ttl_s: 600
+  draft_timeout_ms: 2500
+tts:                          # 语音播报（只在 realtime 模式下合成）
+  enabled: false
+  api: seed-audio             # seed-audio（当前 Key 可用，慢，靠预合成）| tts2（流式，需开通 seed-tts-2.0）
+  voice: ""                   # tts2 音色 / seed-audio 参考音色，如 zh_female_xiaohe_uranus_bigtts
+  style: ""                   # tts2 的 context_texts 语气指令
+  api_key_env: DOUBAO_TTS_API_KEY
+  cache_dir: data/cache/tts
+policy:
+  global_min_gap_s: 30
+  certain_max_age_s: 10
+slow:
+  every_s: 30
+  provider: none              # none（规则摘要）| llm
+  model: ""
+  llm_provider: openai
+providers:
+  openai:    {base_url: null, base_url_env: OPENAI_BASE_URL, api_key_env: OPENAI_API_KEY}
+  deepseek:  {base_url: "https://api.deepseek.com", api_key_env: DEEPSEEK_API_KEY}
+  dashscope: {base_url: "https://dashscope.aliyuncs.com/compatible-mode/v1", api_key_env: DASHSCOPE_API_KEY}
+  gemini:    {base_url: "https://generativelanguage.googleapis.com/v1beta/openai/", api_key_env: GEMINI_API_KEY}
+  ollama:    {base_url: "http://localhost:11434/v1", api_key_env: OLLAMA_API_KEY, json_mode: none}
+  vllm:      {base_url: "http://localhost:8000/v1", api_key_env: VLLM_API_KEY}

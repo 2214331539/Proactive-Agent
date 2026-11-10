@@ -1,0 +1,549 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Proactive Agent · 实时验收</title>
+<style>
+:root{--ink:#1f2b3c;--muted:#8796a8;--line:#e7ecf2;--bg:#f6f8fb;--card:#fff;--blue:#4f86d9;--amber:#d9953f;--green:#3f9f7f;--teal:#4fa5a0;--violet:#7d6cc4;--red:#d2574a;--rose:#e2a59b}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0;height:100%;font-family:Inter,-apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;color:var(--ink);background:var(--bg)}
+body{display:flex;flex-direction:column;overflow:hidden}
+button,select,input{font:inherit}
+header{flex:0 0 58px;display:flex;align-items:center;gap:14px;padding:0 18px;background:#fff;border-bottom:1px solid var(--line)}
+.brand{display:flex;align-items:center;gap:10px;min-width:190px}
+.logo{width:34px;height:34px;border-radius:11px;background:linear-gradient(135deg,#fff,#eaf2ff);border:1px solid #dfe7f1;display:grid;place-items:center}
+.brand h1{font-size:16px;margin:0;letter-spacing:-.02em}.brand small{display:block;font-size:10.5px;color:var(--muted);font-weight:500}
+.ctrl{display:flex;align-items:center;gap:7px;flex:1;flex-wrap:nowrap;min-width:0}
+select,input.in{height:33px;border:1px solid #dde4ec;border-radius:9px;background:#fff;padding:0 8px;min-width:0}
+select{max-width:300px}input.in{width:66px}
+.btn{height:33px;padding:0 12px;border:1px solid #dde4ec;border-radius:9px;background:#fff;color:#44566c;font-weight:600;font-size:12.5px;cursor:pointer;white-space:nowrap}
+.btn:hover{background:#f3f6fa}.btn.primary{background:#24384f;border-color:#24384f;color:#fff}.btn.primary:hover{background:#334d6b}
+.btn:disabled{opacity:.45;cursor:not-allowed}.btn.sm{height:26px;padding:0 9px;font-size:11.5px;border-radius:7px}
+.sep{width:1px;height:24px;background:var(--line);margin:0 3px}
+.lbl{font-size:11.5px;color:#7a8a9c;white-space:nowrap}
+.desc{flex:0 0 auto;padding:7px 20px;font-size:12px;color:#6f7f92;background:#fbfcfe;border-bottom:1px solid var(--line);min-height:30px;line-height:1.55}
+.desc b{color:#3f5268}
+main{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) 480px;gap:12px;padding:12px 14px 14px}
+.left,.right{display:flex;flex-direction:column;gap:12px;min-height:0;min-width:0}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;box-shadow:0 8px 26px #4e678a0d}
+.viewer{position:relative;flex:1;min-height:220px;overflow:hidden;background:#0f1722;border-radius:16px}
+.viewer video,.viewer img{width:100%;height:100%;object-fit:contain;display:block;background:#0f1722}
+.empty{position:absolute;inset:0;display:grid;place-items:center;color:#a9b7c8;font-size:14px;text-align:center;padding:20px;line-height:1.7}
+.ov-top{position:absolute;top:12px;left:12px;right:12px;display:flex;gap:7px;flex-wrap:wrap;pointer-events:none}
+.badge{background:rgba(15,23,34,.62);color:#e8eef6;border-radius:8px;padding:4px 9px;font-size:11.5px;backdrop-filter:blur(4px)}
+.badge.live{background:rgba(201,62,52,.85)}.badge.replay{background:rgba(79,134,217,.85)}.badge.done{background:rgba(63,159,127,.85)}
+.sub{position:absolute;left:50%;bottom:16px;transform:translateX(-50%);max-width:70%;background:rgba(10,16,24,.72);color:#fff;border-radius:10px;padding:7px 14px;font-size:14px;line-height:1.45;text-align:center}
+.sub b{color:#9fc4ff;font-weight:600;margin-right:6px}.sub i{font-style:normal;color:#9aa8b9;font-size:11px;display:block}
+.focus{position:absolute;left:12px;bottom:14px;width:300px;background:rgba(255,255,255,.95);border-radius:13px;padding:9px 12px;box-shadow:0 10px 30px rgba(0,0,0,.28);font-size:11.5px;color:#4f6276}
+.focus .ft{font-size:10.5px;color:#8a98a8;font-weight:650;display:flex;justify-content:space-between}
+.focus .fp{font-size:13px;font-weight:700;color:#22344a;margin:3px 0 5px;line-height:1.35}
+.toast{position:absolute;top:44px;right:14px;width:min(400px,50%);background:#fff;border-radius:14px;box-shadow:0 14px 40px rgba(0,0,0,.35);padding:12px 15px;border-left:5px solid var(--green);animation:pop .35s ease}
+.toast.ASK{border-left-color:var(--blue)}.toast.AMBIENT{border-left-color:var(--teal)}
+.toast-head{font-size:11.5px;color:#5c6d80;font-weight:650;display:flex;justify-content:space-between;gap:8px}
+.toast-text{font-size:19px;font-weight:700;margin-top:4px;line-height:1.35}
+.toast-why{font-size:11.5px;color:#6f8195;margin-top:5px}
+@keyframes pop{0%{transform:scale(.9);opacity:0}100%{transform:scale(1);opacity:1}}
+.timeline{flex:0 0 100px;padding:8px 16px 6px}
+.tl-head{display:flex;justify-content:space-between;align-items:center;font-size:11px;color:var(--muted);font-weight:600;margin-bottom:2px;gap:10px}
+.tl-head .lg{display:flex;gap:10px;flex-wrap:wrap}.tl-head .lg i{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:3px;vertical-align:-1px}
+.tl{position:relative;height:66px;cursor:pointer}
+.tl-rail{position:absolute;left:0;right:0;top:36px;height:4px;background:#edf1f6;border-radius:3px}
+.tl-fill{position:absolute;left:0;top:36px;height:4px;background:linear-gradient(90deg,#7fb1e6,#71c0aa);border-radius:3px;width:0}
+.tl-head-line{position:absolute;top:18px;width:2px;height:34px;background:#24384f;margin-left:-1px;border-radius:2px}
+.mk{position:absolute;transform:translateX(-50%);top:31px;width:12px;height:12px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.08)}
+.mk.compile{background:var(--violet);border-radius:3px;transform:translateX(-50%) rotate(45deg);width:10px;height:10px;top:32px}
+.mk.opp{background:#fff;border:2px solid #b9c3cf;width:9px;height:9px;top:33.5px;box-shadow:none}
+.mk.wait{background:var(--amber);width:8px;height:8px;top:34px}
+.mk.REMIND{background:var(--green);width:16px;height:16px;top:29px}.mk.ASK{background:var(--blue);width:15px;height:15px;top:29.5px}
+.mk.AMBIENT{background:var(--teal);width:11px;height:11px;top:32px}
+.mk.future{opacity:.3}
+.vd{position:absolute;transform:translateX(-50%);top:12px;font-size:12px;font-weight:800;line-height:1}
+.vd.useful{color:var(--green)}.vd.unnecessary{color:#9aa5b1}.vd.wrong{color:var(--red)}.vd.missed{color:var(--red);top:48px}
+.gt{position:absolute;top:0;height:54px;border-left:1.5px solid #5c6b7c;transform:translateX(-.5px)}
+.gt.deadline{border-left:2px dashed var(--red)}
+.gt span{position:absolute;top:-1px;left:4px;font-size:10px;color:#56657a;white-space:nowrap;background:rgba(255,255,255,.85);padding:0 3px;border-radius:4px}
+.gt.deadline span{color:var(--red);font-weight:650}
+.tl-axis{position:absolute;left:0;right:0;top:48px;display:flex;justify-content:space-between;font-size:9.5px;color:#a2aebb}
+.strip{flex:0 0 132px;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);gap:12px}
+.strip .card{padding:9px 14px;min-width:0}
+.sec-head{display:flex;justify-content:space-between;align-items:center;font-size:11px;color:var(--muted);font-weight:650;letter-spacing:.02em;margin-bottom:7px;gap:8px}
+.sec-head.big{font-size:14px;color:var(--ink);padding:12px 16px 0;margin-bottom:6px}
+.thumbs{display:flex;gap:7px;height:86px;overflow:hidden}
+.thumbs img{height:86px;border-radius:9px;border:1px solid var(--line)}
+.thumbs .ph,.ph{font-size:11.5px;color:#a3afbc;align-self:center}
+.people{display:flex;gap:8px;overflow-x:auto;height:88px}
+.pp{flex:0 0 150px;border:1px solid var(--line);border-radius:11px;padding:6px 9px;font-size:11px;color:#5d6e80}
+.pp.away{opacity:.55}.pp .nm{font-weight:700;color:#22344a;font-size:12px;display:flex;justify-content:space-between}
+.pp .bar{height:5px;border-radius:3px;background:#eef1f5;overflow:hidden;margin:4px 0 3px}.pp .bar i{display:block;height:100%;background:#c9bfeb}
+.pp .bar i.hot{background:var(--amber)}
+.pp .cue{color:#9aa6b4;font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chat{flex:1.15;display:flex;flex-direction:column;min-height:0}
+.chatlist{flex:1;overflow:auto;padding:4px 14px 14px;display:flex;flex-direction:column;gap:8px}
+.msg{font-size:12.5px;line-height:1.55}
+.msg .tm,.tm{font-size:10.5px;color:#a0acb9;margin-right:6px;font-variant-numeric:tabular-nums}
+.msg.note{background:#f4f1fc;border:1px solid #e7e1fa;color:#4f4380;border-radius:11px;padding:7px 10px}
+.msg.note small{display:block;color:#8a80b5}
+.msg.muted{color:#8392a3;font-size:11.5px;padding:1px 4px}
+.msg.wait{color:#9a6e3c;font-size:11.5px;padding:1px 4px}
+.msg.user{align-self:flex-end;background:#24384f;color:#fff;border-radius:12px 12px 3px 12px;padding:5px 11px;font-size:12px}
+.ai{display:flex;gap:9px;align-items:flex-start}
+.avatar{flex:0 0 30px;height:30px;border-radius:50%;background:linear-gradient(135deg,#5aa88f,#3d8a72);color:#fff;font-size:11px;font-weight:700;display:grid;place-items:center}
+.bubble{flex:1;background:#eef8f3;border:1px solid #d3ece0;border-radius:3px 13px 13px 13px;padding:9px 12px;min-width:0}
+.bubble.ASK{background:#eef4fd;border-color:#d6e4f8}.bubble.AMBIENT{background:#eef7f7;border-color:#d2e9e8}
+.bubble .text{font-size:16px;font-weight:700;margin:3px 0 4px;display:flex;gap:8px;align-items:flex-start}
+.bubble .text button{border:0;background:transparent;cursor:pointer;font-size:14px;padding:0;color:#3f8a72}
+.chip{display:inline-block;font-size:10px;font-weight:700;border-radius:6px;padding:1px 6px;margin-right:5px;white-space:nowrap}
+.chip.REMIND{background:#d7efe4;color:#2f7d62}.chip.ASK{background:#dbe7fa;color:#3d68a8}.chip.AMBIENT{background:#d9efee;color:#2f7d78}
+.chip.src{background:#f1f3f7;color:#5d6f84}.chip.SILENT{background:#eef1f5;color:#6b7a8b}.chip.WAIT{background:#fbe9d3;color:#9a632c}
+.why{font-size:11.5px;color:#5d6e80}.reason{font-size:11px;color:#8494a5;margin-top:2px}
+.vals{font-size:10.5px;color:#7b8a9b;margin-top:3px;font-variant-numeric:tabular-nums}
+.vbtns{display:flex;gap:5px;margin-top:7px;flex-wrap:wrap;align-items:center}
+.vbtns button{height:24px;border:1px solid #cfdce8;background:#fff;border-radius:7px;font-size:11px;cursor:pointer;color:#3f5268;padding:0 8px}
+.vbtns button:hover{background:#f2f6fa}.vbtns button.on{background:#24384f;color:#fff;border-color:#24384f}
+.vbtns .k{font-size:10px;color:#9aa6b4;margin-right:2px}
+.tabs{flex:1;display:flex;flex-direction:column;min-height:0}
+.tabbar{display:flex;gap:1px;padding:6px 8px 0;border-bottom:1px solid var(--line)}
+.tabbar button{border:0;background:transparent;padding:8px 10px;font-size:12px;font-weight:650;color:#8a98a8;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;white-space:nowrap}
+.tabbar button.on{color:#24384f;border-bottom-color:#24384f}
+.tabbar button em{font-style:normal;font-size:10px;background:#fbe9d3;color:#9a632c;border-radius:6px;padding:0 5px;margin-left:3px}
+.tab{flex:1;overflow:auto;padding:10px 14px;display:none;font-size:12px}.tab.on{display:block}
+.grp{font-size:10.5px;color:#9aa6b4;font-weight:700;margin:8px 0 5px;letter-spacing:.04em}
+.opp{border:1px solid var(--line);border-radius:11px;padding:8px 10px;margin-bottom:7px}
+.opp.hot{border-color:#efd3ad;background:#fffbf5}.opp.term{opacity:.5}
+.opp .hd{display:flex;justify-content:space-between;gap:8px;align-items:center}
+.opp .pb{font-weight:650;color:#22344a;font-size:12.5px;margin:4px 0 2px;line-height:1.4}
+.opp .meta{font-size:10.5px;color:#8a98a8}
+svg.vc{width:100%;height:auto;display:block;margin-top:4px}
+.ent{padding:6px 8px;border-radius:9px;margin-bottom:4px;border:1px solid transparent}
+.ent.chg{background:#fff6e8;border-color:#f4dfbd}
+.ent .nm{font-weight:650;font-size:12px}.ent .nm small{color:#8b99a9;font-weight:500;margin-left:5px}
+.bel{display:inline-block;font-size:10.5px;border-radius:6px;padding:1px 6px;margin:3px 4px 0 0;background:#eef2f7;color:#4d5f74}
+.bel.holds{background:#e5f4ee;color:#2f7d62}.bel.stale{background:#fdf0de;color:#a06a25}.bel.unknown{background:#f1f3f6;color:#8a96a3}.bel.conflicted{background:#fbe5e2;color:#b04437}
+.dec{border-bottom:1px solid #f0f3f7;padding:6px 0}
+.dec .row{display:flex;gap:8px;align-items:center}
+.dec .rs{color:#8090a1;font-size:11px;margin-top:2px}
+.log{font-size:11.5px;color:#4e5f72;padding:2px 0;border-bottom:1px dashed #f0f3f6}
+.stat{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:10px}
+.stat div{background:#f6f8fb;border-radius:10px;padding:7px 8px}
+.stat b{display:block;font-size:17px;color:#22344a;font-variant-numeric:tabular-nums}
+.stat span{font-size:10.5px;color:#8a98a8}
+.rv{border:1px solid var(--line);border-radius:11px;padding:8px 10px;margin-bottom:7px}
+.rv .hd{display:flex;justify-content:space-between;gap:8px;font-size:11px;color:#8a98a8}
+.rv .tx{font-size:13.5px;font-weight:700;color:#22344a;margin:3px 0}
+.hint{font-size:11px;color:#8a98a8;line-height:1.6;margin:6px 0}
+.kv{font-variant-numeric:tabular-nums}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand"><div class="logo"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M4 14C7 7 9 7 12 14S18 19 20 12" stroke="#6595cc" stroke-width="2.2" stroke-linecap="round"/><circle cx="5" cy="15.5" r="2.2" fill="#7cbcb4"/><circle cx="18.5" cy="13.5" r="2.2" fill="#d9ae79"/></svg></div>
+    <div><h1>Proactive Agent</h1><small>长视频 · 实时主动性验收</small></div></div>
+  <div class="ctrl">
+    <select id="preset" title="视频源"></select>
+    <span id="custom" hidden><select id="video" title="已下载的 M3-Bench 视频"></select>
+      <span class="lbl">起点</span><input class="in" id="cStart" value="0:00" title="mm:ss">
+      <span class="lbl">时长(分)</span><input class="in" id="cDur" value="" placeholder="全片"></span>
+    <select id="speed" title="播放倍速（实时验收建议 1×）"><option value="1">1×</option><option value="1.5">1.5×</option><option value="2">2×</option></select>
+    <button class="btn primary" id="btnLive">▶ 实时运行</button>
+    <button class="btn" id="btnStop">■ 停止</button>
+    <span class="sep"></span>
+    <select id="runs" title="历史运行"></select>
+    <button class="btn" id="btnReplay">⟲ 回放核验</button>
+    <span class="sep"></span>
+    <select id="voice" title="语音播报"><option value="doubao">🔊 豆包语音</option><option value="browser">🔈 浏览器语音</option><option value="off">🔇 不播报</option></select>
+  </div>
+</header>
+<div class="desc" id="desc">选择视频源点击“实时运行”：系统实时读取视频与对话、建立状态，持续评估每个“机会”的开口价值，只在值得时主动提醒。运行中或回放时都可以在“验收”页逐条核验。</div>
+<main>
+  <section class="left">
+    <div class="viewer">
+      <video id="vid" playsinline preload="auto"></video>
+      <img id="frame" alt="" hidden>
+      <div class="empty" id="empty">还没有开始</div>
+      <div class="ov-top"><span class="badge" id="bMode">未开始</span><span class="badge" id="bVision">感知：—</span><span class="badge" id="bState">状态：—</span><span class="badge" id="bOpp">机会：—</span><span class="badge" id="bNote" hidden></span></div>
+      <div class="focus" id="focus" hidden></div>
+      <div class="toast" id="toast" hidden><div class="toast-head"><span id="toastHead"></span><span id="toastTime"></span></div><div class="toast-text" id="toastText"></div><div class="toast-why" id="toastWhy"></div></div>
+      <div class="sub" id="sub" hidden></div>
+    </div>
+    <div class="card timeline">
+      <div class="tl-head"><span class="lg"><span><i style="background:#7d6cc4;border-radius:2px"></i>记住请求</span><span><i style="background:#fff;border:2px solid #b9c3cf"></i>发现机会</span><span><i style="background:#d9953f"></i>再等等</span><span><i style="background:#3f9f7f"></i>提醒</span><span><i style="background:#4f86d9"></i>询问</span><span><i style="background:#4fa5a0"></i>提示音</span><span>✓✗ 人工核验</span></span><span class="kv" id="clock">00:00 / 00:00</span></div>
+      <div class="tl" id="tl"></div>
+    </div>
+    <div class="strip">
+      <div class="card"><div class="sec-head"><span>AI 看到的画面 · 最近一个感知窗口</span><span id="winInfo"></span></div><div class="thumbs" id="thumbs"><span class="ph">—</span></div></div>
+      <div class="card"><div class="sec-head"><span>人物 · 在做什么 / 方不方便打扰</span><span id="burden"></span></div><div class="people" id="people"><span class="ph">—</span></div></div>
+    </div>
+  </section>
+  <section class="right">
+    <div class="card chat"><div class="sec-head big"><span>🤖 AI 助理 · 主动消息</span><span id="stats" style="font-size:11px;color:#8796a8;font-weight:600"></span></div><div class="chatlist" id="chat"></div></div>
+    <div class="card tabs">
+      <div class="tabbar"><button data-t="opp" class="on">机会<em id="nHot" hidden></em></button><button data-t="review">验收</button><button data-t="people">人物</button><button data-t="dec">决策</button><button data-t="state">状态</button><button data-t="log">事件</button></div>
+      <div class="tab on" id="tab-opp"></div><div class="tab" id="tab-review"></div><div class="tab" id="tab-people"></div><div class="tab" id="tab-dec"></div><div class="tab" id="tab-state"></div><div class="tab" id="tab-log"></div>
+    </div>
+  </section>
+</main>
+<script>
+(()=>{
+'use strict';
+const $=s=>document.querySelector(s);
+const vid=$('#vid'),img=$('#frame');
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const fmt=ms=>{if(ms==null||isNaN(ms))return '--';const s=Math.max(0,ms)/1000,h=Math.floor(s/3600),m=Math.floor(s%3600/60),ss=Math.floor(s%60);return (h?h+':'+String(m).padStart(2,'0'):String(m).padStart(2,'0'))+':'+String(ss).padStart(2,'0')};
+const sgn=x=>x==null?'—':(x>0?'+':x<0?'−':'')+Math.abs(x).toFixed(2);
+const MODE={REMIND:'提醒',ASK:'询问',AMBIENT:'提示音',WAIT:'再等等',SILENT:'沉默'};
+const SRC={request:'① 用户请求',template:'② 风险模板',belief_gap:'③ 认知差',goal:'⑤ 目标推断',search:'⑤ 在找东西',forecast:'⑥ 风险预测',open:'✦ 开放发现',expectation:'④ 预期违背'};
+const VERD={useful:'✓ 有用',unnecessary:'✗ 没必要',wrong:'⚠ 判断错误'};
+const VGLYPH={useful:'✓',unnecessary:'✗',wrong:'⚠',missed:'⚑'};
+const C_INT={AMBIENT:.1,ASK:1.5,REMIND:1},C_FA={AMBIENT:.2,ASK:1,REMIND:1.5};
+let PRESETS=[],VIDEOS=[],es=null,dirty=true,lastRender=0,audioEl=null,actx=null;
+const S={};
+function reset(){Object.assign(S,{mode:null,run:null,meta:{},events:[],idx:0,t:0,ents:{},bel:{},needs:{},chat:[],logs:[],win:null,wins:0,inflight:0,lat:[],utt:null,frame:null,ver:0,ended:false,t0:0,vclock:0,vplaying:false,vlast:0,
+  opps:{},vals:{},decLog:[],dls:[],audio:{},waitAudio:{},verdicts:{},people:{},household:null,gaps:[],burden:0,drafts:{},fbDone:{},legacyDec:[]});hideToast();dirty=true}
+reset();
+const VS=()=>(S.meta.view_start??0);
+const speedOf=()=>S.meta.speed||1;
+
+// ---------------------------------------------------------------- 事件 → 界面状态
+function apply(e,fresh){
+  switch(e.ev){
+  case 'entity':S.ents[e.id]={type:e.type,cls:e.cls,desc:e.desc,label:e.label,t:e.t};break;
+  case 'delta':S.ver=e.version||S.ver;for(const c of e.changes||[])S.bel[c.key]={v:c.new,st:c.status,src:c.source,reason:c.reason,t:e.t};break;
+  case 'compile':S.chat.push({type:'note',t:e.t,text:e.summary||e.topic,utt:e.utt,speaker:e.speaker});break;
+  case 'opp':{const old=S.opps[e.key];S.opps[e.key]={...(old||{}),...e,t0:old?old.t0:e.t,tu:e.t};
+    if(!old&&e.status==='active'&&['request','belief_gap','search','open','forecast'].includes(e.source))S.chat.push({type:'muted',t:e.t,text:`◇ 发现机会 [${SRC[e.source]||e.source}] ${e.problem}`});
+    if(old&&old.status==='active'&&e.status!=='active')S.chat.push({type:'muted',t:e.t,text:`◆ 机会${({resolved:'已解决',expired:'过期',suppressed:'已关闭'})[e.status]||e.status}：${e.problem}`});break}
+  case 'value':{const prev=S.vals[e.key];S.vals[e.key]=e;
+    if(!prev||prev.decision!==e.decision){S.decLog.push(e);if(e.decision==='WAIT')S.chat.push({type:'wait',t:e.t,e})}break}
+  case 'delivery':S.dls.push(e);if(e.audio)S.audio[e.delivery_id]=e.audio;S.chat.push({type:'ai',t:e.t,e});if(fresh){showToast(e);playDelivery(e)}break;
+  case 'tts':if(e.url){S.audio[e.delivery_id]=e.url;const w=S.waitAudio[e.delivery_id];if(w&&fresh&&performance.now()-w<60000){playUrl(e.url)}delete S.waitAudio[e.delivery_id]}break;
+  case 'draft':S.drafts[e.key]=e;break;
+  case 'deferred':{const o=S.opps[e.key];S.chat.push({type:'muted',t:e.t,text:`⏳ 频率限制：${o?o.problem:e.key} 的${MODE[e.mode]||''}最早 ${fmt(e.until_ms)} 再看`});break}
+  case 'people':S.people=e.people||{};S.household=e.household;S.gaps=e.gaps||[];S.burden=e.burden||0;break;
+  case 'verdict':S.verdicts[e.delivery_id||('miss_'+e.t_ms)]=e;break;
+  case 'feedback':S.fbDone[e.delivery_id||e.need_id]=e.fb;S.chat.push({type:'user',t:e.t,text:({done:'已处理',not_needed:'不需要',wrong:'判断错误'})[e.fb]||e.fb});break;
+  // 旧路径（proactive.enabled=false 的运行）
+  case 'decision':S.legacyDec.push(e);break;
+  case 'utterance':S.utt=e;break;
+  case 'window':S.wins++;S.inflight++;if((e.frames&&e.frames.length)||!S.win||!(S.win.frames&&S.win.frames.length))S.win={...e};break;
+  case 'patch':S.inflight=Math.max(0,S.inflight-1);if(e.latency_ms!=null&&!e.failed)S.lat.push(e.latency_ms);if(S.win&&S.win.window_id===e.window_id)S.win.patch=e;break;
+  case 'frame':S.frame=e.img;break;
+  case 'log':S.logs.push(e);if(S.logs.length>600)S.logs.splice(0,200);break;
+  case 'episode':S.logs.push({t:e.t,cat:'slow',text:'📚 情节记忆：'+e.text});break;
+  case 'end':S.ended=true;break;
+  case 'error':S.logs.push({t:e.t,cat:'warn',text:'❌ '+e.text});S.chat.push({type:'muted',t:e.t,text:'❌ 运行出错：'+e.text});S.ended=true;break;
+  }
+  dirty=true;
+}
+
+// ---------------------------------------------------------------- 语音
+function chime(){try{actx=actx||new AudioContext();const t=actx.currentTime;[880,1320].forEach((f,i)=>{const o=actx.createOscillator(),g=actx.createGain();o.frequency.value=f;g.gain.setValueAtTime(0,t+i*.12);g.gain.linearRampToValueAtTime(.18,t+i*.12+.02);g.gain.exponentialRampToValueAtTime(.001,t+i*.12+.35);o.connect(g).connect(actx.destination);o.start(t+i*.12);o.stop(t+i*.12+.4)})}catch(e){}}
+function playUrl(u){if($('#voice').value!=='doubao')return;try{if(audioEl)audioEl.pause();audioEl=new Audio(u);audioEl.play().catch(()=>{})}catch(e){}}
+function browserSpeak(text){if(!window.speechSynthesis)return;const u=new SpeechSynthesisUtterance(text);u.lang='zh-CN';u.rate=1.0;speechSynthesis.cancel();speechSynthesis.speak(u)}
+function playDelivery(e){
+  const v=$('#voice').value;if(v==='off')return;
+  if(e.mode==='AMBIENT'){chime();return}
+  if(v==='browser'){browserSpeak(e.text);return}
+  const u=S.audio[e.delivery_id];
+  if(u){chime();setTimeout(()=>playUrl(u),350);return}
+  if(e.tts_pending){chime();S.waitAudio[e.delivery_id]=performance.now();return}
+  browserSpeak(e.text);
+}
+
+// ---------------------------------------------------------------- 渲染
+function median(a){if(!a.length)return null;const b=[...a].sort((x,y)=>x-y);return b[Math.floor(b.length/2)]}
+const visible=()=>S.mode==='replay'?S.t:Infinity;
+function activeOpps(){return Object.values(S.opps).filter(o=>o.status==='active')}
+function hotOpps(){return activeOpps().map(o=>({o,v:S.vals[o.key]})).filter(x=>x.v&&(x.v.decision!=='SILENT'||Math.max(...Object.values(x.v.U))>-1)).sort((a,b)=>Math.max(...Object.values(b.v.U))-Math.max(...Object.values(a.v.U)))}
+function render(){
+  const dur=(S.meta.duration||0)*1000;
+  $('#clock').textContent=fmt(S.t)+' / '+fmt(dur);
+  const bm=$('#bMode');
+  bm.className='badge '+(S.mode==='live'?(S.ended?'done':'live'):S.mode==='replay'?'replay':'');
+  bm.textContent=S.mode==='live'?(S.ended?'实时运行结束':'● 实时运行中'+(speedOf()!==1?' '+speedOf()+'×':'')):S.mode==='replay'?'回放核验':'未开始';
+  const med=median(S.lat);
+  $('#bVision').textContent=`感知窗口 ${S.wins} · 在途 ${S.inflight} · 时延中位 ${med==null?'—':(med/1000).toFixed(1)+' s'}`;
+  $('#bState').textContent=`状态 v${S.ver} · 实体 ${Object.keys(S.ents).length}`;
+  const hot=hotOpps();
+  $('#bOpp').textContent=`机会 ${activeOpps().length} · 变热 ${hot.length}`;
+  const nh=$('#nHot');nh.hidden=!hot.length;nh.textContent=hot.length;
+  const note=$('#bNote');note.hidden=!(S.meta.view_note&&!S.meta.video_url);note.textContent=S.meta.view_note||'';
+  const sub=$('#sub');
+  if(S.utt&&S.t-S.utt.t<5500&&S.t>=S.utt.t){sub.hidden=false;sub.innerHTML=`<i>AI 听到（字幕作 ASR）</i><b>${esc(S.utt.speaker||'?')}</b>${esc(S.utt.text)}`}else sub.hidden=true;
+  if(!S.meta.video_url&&S.frame){img.src=S.frame}
+  renderFocus(hot);
+  const voice=S.dls.filter(d=>d.mode!=='AMBIENT').length;
+  $('#stats').textContent=`主动消息 ${S.dls.length}（语音 ${voice}）· 价值判断 ${S.decLog.length} 次`;
+  if(!dirty)return;
+  dirty=false;
+  renderChat();renderSeen();renderPeople();renderOpps();renderReview();renderDec();renderState();renderLog();renderTimeline();
+}
+function vchart(v,w=300){
+  const rows=[['REMIND','提醒'],['ASK','询问'],['AMBIENT','提示音']].filter(r=>v.U[r[0]]!=null),L=46,R=w-6,min=-3,max=3,X=u=>L+(Math.max(min,Math.min(max,u))-min)/(max-min)*(R-L),rh=16,top=14;
+  const best=Object.entries(v.U).sort((a,b)=>b[1]-a[1])[0][0],speak=['REMIND','ASK','AMBIENT'].includes(v.decision);
+  let s=`<svg class="vc" viewBox="0 0 ${w} ${top+rh*rows.length+4}">`;
+  s+=`<rect x="${X(min)}" y="${top-3}" width="${X(0)-X(min)}" height="${rh*rows.length}" fill="#fdf4f2" opacity=".6"/>`;
+  rows.forEach(([k,n],i)=>{const u=v.U[k],y=top+i*rh,x0=Math.min(X(0),X(u)),bw=Math.max(2,Math.abs(X(u)-X(0))),b=k===best;
+    const fill=b?(speak?'#5fb39a':u>0?'#e6b07a':'#d9a59c'):(u<0?'#ecc6bf':'#c3d4ea');
+    s+=`<text x="0" y="${y+6}" font-size="10" fill="${b?'#22344a':'#8a98a8'}" font-weight="${b?700:500}" dominant-baseline="middle">${n}</text><rect x="${x0}" y="${y}" width="${bw}" height="11" rx="3" fill="${fill}"/>`;
+    s+=`<text x="${u>=0?X(0)-4:X(0)+4}" y="${y+6}" font-size="9.5" fill="#5d6f84" text-anchor="${u>=0?'end':'start'}" dominant-baseline="middle">${sgn(u)}</text>`});
+  s+=`<line x1="${X(0)}" x2="${X(0)}" y1="${top-5}" y2="${top+rh*rows.length-2}" stroke="#8d9aa8"/>`;
+  s+=`<line x1="${X(v.V)}" x2="${X(v.V)}" y1="${top-7}" y2="${top+rh*rows.length-2}" stroke="#d99b55" stroke-width="1.5" stroke-dasharray="3 2"/><text x="${Math.min(R-28,X(v.V))}" y="${top-6}" font-size="9" fill="#a2683a">等待 ${(+v.V).toFixed(2)}</text>`;
+  return s+'</svg>';
+}
+const valLine=v=>v?`p ${(+v.p).toFixed(2)} · q ${(+v.q).toFixed(2)} · H ${(+v.H).toFixed(2)} · L ${v.L} · ${MODE[v.best]} ${sgn(v.U[v.best])} / 等待 ${(+v.V).toFixed(2)}`:'';
+function renderFocus(hot){
+  const f=$('#focus');const x=hot[0];
+  if(!x||!S.mode){f.hidden=true;return}
+  f.hidden=false;const v=x.v;
+  f.innerHTML=`<div class="ft"><span>AI 正在掂量的机会</span><span class="chip ${v.decision}">${MODE[v.decision]}</span></div><div class="fp">${esc(x.o.problem)}</div>${vchart(v,276)}<div style="font-size:10.5px;color:#8a98a8;margin-top:2px">${esc(v.reason)}</div>`;
+}
+function verdictBtns(d){
+  const cur=(S.verdicts[d.delivery_id]||{}).verdict;
+  return `<div class="vbtns"><span class="k">核验</span>${Object.entries(VERD).map(([k,n])=>`<button data-verdict="${k}" data-dl="${esc(d.delivery_id)}" data-t="${d.t}" data-l="${(d.est||{}).L||8}" class="${cur===k?'on':''}">${n}</button>`).join('')}</div>`;
+}
+function renderChat(){
+  const box=$('#chat'),atBottom=box.scrollHeight-box.scrollTop-box.clientHeight<40;
+  const live=S.mode==='live'&&!S.ended;
+  const items=S.chat.slice(-160);
+  box.innerHTML=items.map(m=>{
+    const tm=`<span class="tm">${fmt(m.t)}</span>`;
+    if(m.type==='note')return `<div class="msg note">${tm}🧩 <b>记住了：</b>${esc(m.text)}<small>来自${esc(m.speaker?m.speaker+' 说的':'')}“${esc(m.utt)}”，等时机合适再提醒</small></div>`;
+    if(m.type==='muted')return `<div class="msg muted">${tm}${esc(m.text)}</div>`;
+    if(m.type==='wait'){const e=m.e;return `<div class="msg wait">${tm}⚖ 再等等：${esc(e.problem)} — ${esc(e.reason)}</div>`}
+    if(m.type==='user')return `<div class="msg user">你：${esc(m.text)}</div>`;
+    if(m.type==='ai'){const e=m.e,v=e.est||{},has=S.audio[e.delivery_id];
+      const fb=live&&!S.fbDone[e.delivery_id]&&e.mode!=='AMBIENT'?`<div class="vbtns"><span class="k">反馈给系统</span><button data-fb="done" data-dl="${esc(e.delivery_id)}">已处理</button><button data-fb="not_needed" data-dl="${esc(e.delivery_id)}">不需要</button><button data-fb="wrong" data-dl="${esc(e.delivery_id)}">判断错误</button></div>`:'';
+      return `<div class="ai"><div class="avatar">AI</div><div class="bubble ${e.mode}"><div>${tm}<span class="chip ${e.mode}">${MODE[e.mode]}</span><span class="chip src">${esc(e.source_label||SRC[e.source]||e.source)}</span>${e.reminder_no>1?'<span class="chip src">第 '+e.reminder_no+' 次</span>':''}</div>
+        <div class="text"><span>${esc(e.text)}</span>${e.mode!=='AMBIENT'?`<button data-play="${esc(e.delivery_id)}" title="${has?'播放豆包语音':'语音合成中'}">${has?'🔊':'⏳'}</button>`:''}</div>
+        <div class="why">机会：${esc(e.problem)}</div><div class="reason">${esc(v.reason||'')}</div><div class="vals">${valLine(v)}</div>${fb}${S.run?verdictBtns(e):''}</div></div>`}
+    return '';
+  }).join('')||'<div class="msg muted">AI 还没有说话。它会持续观察，只在开口价值超过等待价值时主动说话。</div>';
+  if(atBottom||live)box.scrollTop=box.scrollHeight;
+}
+function renderSeen(){
+  const w=S.win;
+  if(!w){$('#thumbs').innerHTML='<span class="ph">—</span>';$('#winInfo').textContent='';return}
+  $('#thumbs').innerHTML=(w.frames&&w.frames.length)?w.frames.map((f,i)=>`<img src="${f}" title="${fmt((w.frame_times||[])[i])}">`).join(''):'<span class="ph">（这次运行没有保存缩略图）</span>';
+  const p=w.patch;
+  $('#winInfo').textContent=`${w.trigger} · ${fmt(w.end_ms)}`+(p?` · ${p.failed?'失败':(p.latency_ms/1000).toFixed(1)+' s · '+p.n_ops+' 个操作'}`:' · 分析中…');
+}
+function personCards(full){
+  const ps=Object.entries(S.people).sort((a,b)=>(b[1].present-a[1].present)||(b[1].p-a[1].p));
+  if(!ps.length)return '<span class="ph">还没有识别到人物</span>';
+  return ps.map(([k,p])=>`<div class="pp ${p.present?'':'away'}"${full?' style="flex:1 1 200px"':''}><div class="nm"><span>${esc(p.name)}</span><span style="font-weight:600;color:#8a98a8;font-size:10.5px">${p.present?'在场':'不在画面'}</span></div>
+    <div style="font-size:10.5px">出门 ${(p.p*100).toFixed(0)}% · ${esc(p.stage_label)}</div><div class="bar"><i class="${p.stage>=2?'hot':''}" style="width:${(p.p*100).toFixed(0)}%"></i></div>
+    <div style="font-size:10.5px">${esc(p.situation)}</div><div class="cue" title="${esc((p.cues||[]).join(' / '))}">${esc((p.cues||[]).join(' · '))}</div></div>`).join('');
+}
+function renderPeople(){
+  $('#people').innerHTML=personCards(false);
+  $('#burden').textContent=`打扰负担 ${(+S.burden).toFixed(2)}`;
+  const h=S.household;
+  $('#tab-people').innerHTML=`<div class="hint">GoalFilter 把动作标签、拿起随身物品、走向门口、“走吧 / 要迟到了”这类话累加成出门概率，并随时间衰减；Receptivity 判断此刻方不方便打扰；UserView 推算每个人以为的世界。</div>
+    ${h?`<div class="grp">全屋聚合（身份不稳时的兜底）</div><div class="pp" style="width:auto;flex:none;margin-bottom:6px">出门 ${(h.p*100).toFixed(0)}% · ${esc(h.stage_label)} · ${esc((h.cues||[]).join(' · '))}</div>`:''}
+    <div class="grp">人物</div><div style="display:flex;flex-wrap:wrap;gap:8px">${personCards(true)}</div>
+    <div class="grp">认知差（真实状态 ≠ 某人以为的）</div>${S.gaps.length?S.gaps.map(g=>`<div class="log">${esc(g.person)}：${esc(g.key)}</div>`).join(''):'<div class="msg muted">暂无</div>'}`;
+}
+function oppCard(o){
+  const v=S.vals[o.key],term=o.status!=='active',hot=v&&!term&&v.decision!=='SILENT';
+  return `<div class="opp ${hot?'hot':''} ${term?'term':''}"><div class="hd"><span><span class="chip src">${esc(SRC[o.source]||o.source)}</span>${(o.sources||[]).length>1?'<span class="chip src">+'+(o.sources.length-1)+' 来源</span>':''}</span>
+    <span>${term?`<span class="chip src">${({resolved:'已解决',expired:'过期',suppressed:'已关闭'})[o.status]||o.status}</span>`:v?`<span class="chip ${v.decision}">${MODE[v.decision]}</span>`:''}</span></div>
+    <div class="pb">${esc(o.problem)}</div>
+    <div class="meta">对谁：${esc((o.addressee||[]).join('、'))} · 期限：${esc(o.deadline)} · ${esc(o.category)}${o.reminders?' · 已提醒 '+o.reminders+' 次':''}${o.p_model!=null?` · 模型 p=${(+o.p_model).toFixed(2)} q=${(+o.q_model).toFixed(2)}${o.model_why?'（'+esc(o.model_why)+'）':''}`:''}</div>
+    ${v&&!term?`<div class="meta" style="margin-top:3px">${Object.entries(v.p_parts||{}).map(([k,x])=>esc(k)+' '+(+x).toFixed(2)).join(' × ')} → p ${(+v.p).toFixed(2)} · q ${(+v.q).toFixed(2)}（${esc(v.q_why)}）· H ${(+v.H).toFixed(2)}${v.stage?'（'+esc(v.stage)+'）':''} · ${esc(v.situation)}</div>${vchart(v,420)}<div class="meta">${esc(v.reason)}</div>`:''}</div>`;
+}
+function renderOpps(){
+  const all=Object.values(S.opps);
+  const act=all.filter(o=>o.status==='active').sort((a,b)=>{const va=S.vals[a.key],vb=S.vals[b.key];return (vb?Math.max(...Object.values(vb.U)):-99)-(va?Math.max(...Object.values(va.U)):-99)});
+  const done=all.filter(o=>o.status!=='active').sort((a,b)=>b.tu-a.tu).slice(0,30);
+  $('#tab-opp').innerHTML=(act.length?`<div class="grp">活跃机会（按开口价值排序）</div>`+act.map(oppCard).join(''):'<div class="msg muted">还没有机会。来源：用户请求、风险模板、认知差、目标推断、在找东西、风险预测、开放发现。</div>')+
+    (done.length?`<div class="grp">已结束</div>`+done.map(oppCard).join(''):'');
+}
+function stats(){
+  const vs=S.verdicts,dl=S.dls,hours=Math.max(S.t,1)/3600000;let npv=0,oracle=0;const c={useful:0,unnecessary:0,wrong:0,missed:0};
+  for(const d of dl){const v=vs[d.delivery_id];if(!v)continue;const m=d.mode||'REMIND',L=+((d.est||{}).L||8);c[v.verdict]=(c[v.verdict]||0)+1;
+    if(v.verdict==='useful'){npv+=L-C_INT[m];oracle+=L-C_INT[m]}else if(v.verdict==='unnecessary')npv-=C_INT[m];else if(v.verdict==='wrong')npv-=C_INT[m]+C_FA[m]}
+  for(const v of Object.values(vs))if(v.verdict==='missed'){c.missed++;oracle+=(+v.L||8)-1}
+  const judged=c.useful+c.unnecessary+c.wrong,voice=dl.filter(d=>d.mode!=='AMBIENT').length;
+  return {c,judged,voice,perHour:voice/hours,prec:judged?c.useful/judged:null,pg:oracle>0?npv/oracle:null,npv,oracle};
+}
+function renderReview(){
+  const st=stats(),box=$('#tab-review');
+  if(!S.run){box.innerHTML='<div class="msg muted">开始实时运行或回放一次历史运行后，可以在这里逐条核验主动消息。</div>';return}
+  const misses=Object.values(S.verdicts).filter(v=>v.verdict==='missed').sort((a,b)=>a.t_ms-b.t_ms);
+  box.innerHTML=`<div class="stat"><div><b>${S.dls.length}</b><span>主动消息（语音 ${st.voice}）</span></div><div><b>${st.perHour.toFixed(1)}</b><span>语音 / 小时</span></div><div><b>${st.judged}/${S.dls.length}</b><span>已核验</span></div><div><b>${st.prec==null?'—':(st.prec*100).toFixed(0)+'%'}</b><span>有用率</span></div>
+    <div><b>${st.c.unnecessary+st.c.wrong}</b><span>误报（没必要+错误）</span></div><div><b>${st.c.missed}</b><span>漏报</span></div><div><b>${st.npv.toFixed(1)}</b><span>净价值 NPV（分）</span></div><div><b>${st.pg==null?'—':st.pg.toFixed(2)}</b><span>主动增益 PG</span></div></div>
+    <div class="vbtns" style="margin:0 0 6px"><button id="btnMiss">⚑ 标记漏报（此刻该提醒却没说）</button><a class="btn sm" style="line-height:24px;text-decoration:none" href="/api/review/${encodeURIComponent(S.run)}" target="_blank">导出核验 JSON</a></div>
+    <div class="hint">核验口径：有用 +L−打扰，没必要 −打扰，判断错误 −打扰−误报代价；漏报计入完美助理。PG = NPV ÷ 完美助理 NPV（0 = 从不说话，1 = 完美，&lt;0 = 添乱）。命令行：<code>pa eval runs/${esc(S.run)}</code></div>
+    ${S.dls.map(d=>`<div class="rv"><div class="hd"><span>${fmt(d.t)} · <span class="chip ${d.mode}">${MODE[d.mode]}</span><span class="chip src">${esc(d.source_label||SRC[d.source])}</span></span><span><button class="btn sm" data-seek="${d.t}">▶ 看前后</button></span></div>
+      <div class="tx">${esc(d.text)}</div><div class="why">机会：${esc(d.problem)} · 对谁：${esc((d.addressee||[]).join('、'))}</div><div class="vals">${valLine(d.est)}</div>${verdictBtns(d)}</div>`).join('')}
+    ${misses.length?`<div class="grp">标记的漏报</div>`+misses.map(v=>`<div class="rv"><div class="hd"><span>${fmt(v.t_ms)} ⚑ 漏报</span><span><button class="btn sm" data-seek="${v.t_ms}">▶ 看前后</button> <button class="btn sm" data-unmiss="${v.t_ms}">撤销</button></span></div><div class="why">${esc(v.note||'')}</div></div>`).join(''):''}`;
+}
+function renderDec(){
+  $('#tab-dec').innerHTML=[...S.decLog].reverse().slice(0,250).map(d=>`<div class="dec"><div class="row"><span class="tm">${fmt(d.t)}</span><span class="chip ${d.decision}">${MODE[d.decision]}</span><b style="font-size:12px">${esc(d.problem)}</b></div>
+    <div class="rs">${esc(d.reason)} · ${valLine(d)}</div></div>`).join('')||(S.legacyDec.length?S.legacyDec.slice().reverse().map(d=>`<div class="dec"><div class="row"><span class="tm">${fmt(d.t)}</span><b>${esc(d.applied)}</b></div><div class="rs">${esc(d.reason||'')}</div></div>`).join(''):'<div class="msg muted">每个机会的决定一变化（沉默 ↔ 再等等 ↔ 开口），这里记一条，包括为什么沉默。</div>');
+}
+function renderState(){
+  const groups={PERSON:[],OBJECT:[],DEVICE:[],PLACE:[]};
+  for(const [id,e] of Object.entries(S.ents)) (groups[e.type]||(groups[e.type]=[])).push([id,e]);
+  const ent=([id,e])=>{const bs=Object.entries(S.bel).filter(([k])=>k.startsWith(id+'.'));
+    const chg=bs.some(([,b])=>S.t-b.t<2500&&S.t>=b.t)||(S.t-e.t<2500&&S.t>=e.t);
+    return `<div class="ent ${chg?'chg':''}"><div class="nm">${esc(id)}${e.label?' ['+esc(e.label)+']':''}<small>${esc(e.desc||e.cls)}</small></div>${bs.map(([k,b])=>`<span class="bel ${b.st}" title="${esc(b.src+' · '+b.reason)}">${esc(k.split('.')[1])}=${esc(b.v)}${b.src==='user_confirmed'?' ✓':''}</span>`).join('')}</div>`};
+  const sec=(t,arr)=>arr.length?`<div class="grp">${t}（${arr.length}）</div>`+arr.map(ent).join(''):'';
+  $('#tab-state').innerHTML=(sec('人物',groups.PERSON)+sec('物品 / 设备',[...groups.OBJECT,...groups.DEVICE])+sec('地点',groups.PLACE))||'<div class="msg muted">状态为空：等待第一个感知窗口返回。</div>';
+}
+function renderLog(){$('#tab-log').innerHTML=S.logs.slice(-250).reverse().map(l=>`<div class="log"><span class="tm">${fmt(l.t)}</span>${esc(l.text)}</div>`).join('')}
+function renderTimeline(){
+  const tl=$('#tl'),dur=(S.meta.duration||0)*1000||Math.max(1,...S.events.map(e=>e.t));
+  const pct=t=>Math.min(100,Math.max(0,t/dur*100)).toFixed(3)+'%';
+  let h='<div class="tl-rail"></div><div class="tl-fill" id="tlFill"></div>';
+  let lastM=-99,row=0;
+  for(const m of (S.meta.markers||[]).slice().sort((a,b)=>a.t-b.t)){const x=m.t*1000/dur*100;row=x-lastM<9?(row+1)%3:0;lastM=x;
+    h+=`<div class="gt ${m.kind==='deadline'?'deadline':''}" style="left:${pct(m.t*1000)}"><span style="top:${row*11-1}px">${esc(m.label)}</span></div>`}
+  const seenWait={};
+  for(const e of S.events){
+    let cls=null,tip='';
+    if(e.ev==='compile'){cls='compile';tip='记住请求：'+(e.summary||e.topic)}
+    else if(e.ev==='opp'&&e.status==='active'&&!seenWait['o'+e.key]){seenWait['o'+e.key]=1;cls='opp';tip='发现机会：'+e.problem}
+    else if(e.ev==='value'&&e.decision==='WAIT'&&!seenWait[e.key]){seenWait[e.key]=1;cls='wait';tip='再等等：'+e.problem+' — '+e.reason}
+    else if(e.ev==='value'&&e.decision!=='WAIT')delete seenWait[e.key];
+    else if(e.ev==='delivery'){cls=e.mode||'REMIND';tip=(MODE[e.mode]||'')+'：'+e.text}
+    if(cls)h+=`<div class="mk ${cls} ${e.t>S.t?'future':''}" style="left:${pct(e.t)}" title="${esc(fmt(e.t)+' '+tip)}"></div>`;
+  }
+  for(const d of S.dls){const v=S.verdicts[d.delivery_id];if(v)h+=`<div class="vd ${v.verdict}" style="left:${pct(d.t)}" title="${esc(VERD[v.verdict]||v.verdict)}">${VGLYPH[v.verdict]}</div>`}
+  for(const v of Object.values(S.verdicts))if(v.verdict==='missed')h+=`<div class="vd missed" style="left:${pct(v.t_ms)}" title="漏报：${esc(v.note||'')}">⚑</div>`;
+  h+=`<div class="tl-head-line" id="tlHead"></div><div class="tl-axis"><span>0:00</span><span>${fmt(dur/4)}</span><span>${fmt(dur/2)}</span><span>${fmt(dur*3/4)}</span><span>${fmt(dur)}</span></div>`;
+  tl.innerHTML=h;updatePlayhead();
+}
+function updatePlayhead(){const dur=(S.meta.duration||0)*1000||1;const p=Math.min(100,Math.max(0,S.t/dur*100))+'%';const f=$('#tlFill'),h=$('#tlHead');if(f)f.style.width=p;if(h)h.style.left=p}
+
+// ---------------------------------------------------------------- toast
+let toastTimer=null;
+function showToast(e){const t=$('#toast');t.hidden=false;t.className='toast '+e.mode;
+  $('#toastHead').textContent=`🤖 AI 主动${MODE[e.mode]} · ${e.source_label||''}`;$('#toastTime').textContent=fmt(e.t);$('#toastText').textContent=e.text;
+  $('#toastWhy').textContent=(e.est&&e.est.reason)||'';clearTimeout(toastTimer);toastTimer=setTimeout(hideToast,10000)}
+function hideToast(){const t=$('#toast');if(t)t.hidden=true}
+
+// ---------------------------------------------------------------- 时钟
+function nowT(){
+  if(S.mode==='live'){if(S.meta.video_url&&!vid.paused&&vid.readyState>=2)return (vid.currentTime-VS())*1000;return S.ended&&S.events.length?Math.max(S.t,S.events[S.events.length-1].t):(performance.now()-S.t0)*speedOf()}
+  if(S.mode==='replay'){if(S.meta.video_url)return vid.readyState>=1?Math.max(0,(vid.currentTime-VS())*1000):S.t;
+    if(S.vplaying){const n=performance.now();S.vclock+=(n-S.vlast);S.vlast=n}return S.vclock}
+  return 0}
+function loop(){
+  if(S.mode){
+    const t=nowT();
+    if(S.mode==='replay'){
+      if(t<S.t-600){const keep={mode:S.mode,run:S.run,meta:S.meta,events:S.events,vclock:S.vclock,vplaying:S.vplaying,vlast:S.vlast,verdicts:S.verdicts,audio:S.audio};reset();Object.assign(S,keep);hideToast()}
+      S.t=t;while(S.idx<S.events.length&&S.events[S.idx].t<=S.t){const e=S.events[S.idx++];apply(e,S.t-e.t<2500)}
+      const dur=(S.meta.duration||0)*1000;
+      if(S.meta.video_url&&dur&&vid.currentTime>=VS()+S.meta.duration&&!vid.paused)vid.pause();
+      if(!S.meta.video_url&&dur&&S.vclock>=dur)S.vplaying=false;
+    }else S.t=Math.max(S.t,t);
+    const now=performance.now();
+    if(now-lastRender>150){render();updatePlayhead();lastRender=now}
+  }
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+
+// ---------------------------------------------------------------- 控制
+function seekTo(t){return new Promise(res=>{const go=()=>{const done=()=>res();vid.addEventListener('seeked',done,{once:true});vid.currentTime=t;setTimeout(done,4000)};
+  if(vid.readyState>=1)go();else vid.addEventListener('loadedmetadata',go,{once:true})})}
+function setViewer(meta){const hasV=!!meta.video_url;vid.hidden=!hasV;img.hidden=hasV;$('#empty').hidden=hasV||!!S.frame;if(!hasV)$('#empty').innerHTML=esc(meta.view_note||'等待画面…')}
+function closeES(){if(es){es.close();es=null}}
+const parseMMSS=s=>{const p=String(s||'0').trim().split(':').map(Number);return p.length>1?p[0]*60+(p[1]||0):p[0]||0};
+async function loadPresets(){
+  [PRESETS,VIDEOS]=await Promise.all([fetch('/api/presets').then(r=>r.json()),fetch('/api/videos').then(r=>r.json()).catch(()=>[])]);
+  $('#preset').innerHTML=PRESETS.map(p=>`<option value="${esc(p.id)}" ${p.available?'':'disabled'}>${esc(p.title)}${p.available?'':'（不可用）'}</option>`).join('')+'<option value="__custom">🎬 自定义：任选已下载视频与时段…</option>';
+  $('#video').innerHTML=VIDEOS.map(v=>`<option value="${esc(v.video)}">${esc(v.video)} · ${v.duration?Math.round(v.duration/60)+' 分钟':'?'}${v.score!=null?' · 线索 '+v.score:''}</option>`).join('');
+  showDesc()}
+function showDesc(){
+  const id=$('#preset').value;$('#custom').hidden=id!=='__custom';
+  if(id==='__custom'){const v=VIDEOS.find(x=>x.video===$('#video').value);
+    $('#desc').innerHTML=v?`<b>${esc(v.video)}</b>（${v.codec}${v.codec!=='h264'?'，浏览器预览需转码，转好前显示 AI 看到的帧':''}）字幕线索：${(v.examples||[]).slice(0,4).map(x=>`<b>${fmt(x.t*1000)}</b> ${esc(x.text)}`).join('；')||'—'}`:'还没有下载 M3-Bench 视频：pa bench m3-download &lt;id&gt;';return}
+  const p=PRESETS.find(x=>x.id===id);if(p)$('#desc').innerHTML=(p.available?'':'⚠ '+esc(p.reason)+'　')+esc(p.desc)+(p.view_note&&!p.video_url?'（'+esc(p.view_note)+'）':'')}
+async function refreshRuns(){const rs=await fetch('/api/runs').then(r=>r.json());
+  $('#runs').innerHTML=rs.map(r=>`<option value="${esc(r.run)}">${esc(r.title?r.title+' · ':'')}${esc(r.run.slice(-15))}${r.deliveries!=null?' · '+r.deliveries+' 条':''}${r.verdicts?' · 已核验 '+r.verdicts:''}${r.proactive?'':' · 旧版'}</option>`).join('')}
+async function startLive(){
+  const id=$('#preset').value;let body;
+  if(id==='__custom'){const dmin=parseFloat($('#cDur').value);body={video:$('#video').value,start:parseMMSS($('#cStart').value),duration:isNaN(dmin)?null:dmin*60}}
+  else{const p=PRESETS.find(x=>x.id===id);if(!p)return;if(!p.available){alert(p.reason);return}body={preset:p.id}}
+  body.speed=parseFloat($('#speed').value)||1;body.tts=$('#voice').value==='doubao';
+  closeES();try{vid.pause()}catch(e){}reset();
+  const r=await fetch('/api/start',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+  if(!r.ok){alert('启动失败：'+await r.text());return}
+  const j=await r.json();S.mode='live';S.run=j.run;S.meta=j.meta;setViewer(S.meta);
+  $('#desc').innerHTML=`<b>实时运行：</b>${esc(S.meta.title)} · ${esc(S.meta.desc||'')}${S.meta.tts?' · 语音：'+esc(S.meta.tts):''}`;
+  if(S.meta.video_url){vid.controls=false;vid.muted=false;vid.src=S.meta.video_url;await seekTo(VS());vid.playbackRate=speedOf()}
+  S.t0=performance.now();
+  if(S.meta.video_url){try{await vid.play()}catch(e){vid.muted=true;await vid.play().catch(()=>{})}}
+  es=new EventSource('/api/stream?since=0');
+  es.onmessage=m=>{const e=JSON.parse(m.data);S.events.push(e);apply(e,true);if(e.ev==='end'||e.ev==='error'){closeES();setTimeout(refreshRuns,800);if(S.meta.video_url)setTimeout(()=>vid.pause(),1500)}};
+  es.onerror=()=>{};
+}
+async function attach(){
+  // 接入正在运行的会话（刷新页面或换浏览器打开时）：最新一次运行还没有 summary.json 就视为在跑
+  let cur=await fetch('/api/current').then(r=>r.ok?r.json():null).catch(()=>null),r,rep;
+  if(cur){if(cur.done)return false;r={run:cur.run};rep={meta:cur.meta,verdicts:(await fetch('/api/review/'+encodeURIComponent(cur.run)).then(x=>x.json()).catch(()=>({}))).verdicts||[]}}
+  else{const rs=await fetch('/api/runs').then(x=>x.json()).catch(()=>[]);r=rs[0];
+    if(!r||r.deliveries!=null)return false;
+    rep=await fetch('/api/replay/'+encodeURIComponent(r.run)).then(x=>x.json()).catch(()=>null);if(!rep)return false}
+  closeES();reset();S.mode='live';S.run=r.run;S.meta=rep.meta||{};S.attaching=true;
+  for(const v of rep.verdicts||[])S.verdicts[v.delivery_id||('miss_'+v.t_ms)]=v;
+  setViewer(S.meta);$('#desc').innerHTML='<b>已接入运行中的会话：</b>'+esc(S.meta.title||r.run);
+  es=new EventSource('/api/stream?since=0');let lastT=0;
+  es.onmessage=m=>{const e=JSON.parse(m.data);S.events.push(e);lastT=Math.max(lastT,e.t);apply(e,!S.attaching);
+    if(e.ev==='end'||e.ev==='error'){closeES();setTimeout(refreshRuns,800);if(S.meta.video_url)setTimeout(()=>vid.pause(),1500)}};
+  es.onerror=()=>{};
+  setTimeout(async()=>{S.attaching=false;S.t0=performance.now()-lastT/speedOf();S.t=lastT;
+    if(S.meta.video_url){vid.controls=false;vid.src=S.meta.video_url;await seekTo(VS()+lastT/1000);vid.playbackRate=speedOf();vid.play().catch(()=>{vid.muted=true;vid.play().catch(()=>{})})}},1500);
+  return true;
+}
+async function loadReplay(run,seek){
+  if(!run)return;closeES();try{vid.pause()}catch(e){}reset();
+  const r=await fetch('/api/replay/'+encodeURIComponent(run)).then(r=>r.json());
+  S.mode='replay';S.run=run;S.meta=r.meta||{};S.events=(r.events||[]).sort((a,b)=>a.t-b.t);
+  for(const v of r.verdicts||[])S.verdicts[v.delivery_id||('miss_'+v.t_ms)]=v;
+  for(const e of S.events){if(e.ev==='tts'&&e.url)S.audio[e.delivery_id]=e.url;if(e.ev==='delivery'&&e.audio)S.audio[e.delivery_id]=e.audio}
+  if(!S.meta.duration)S.meta.duration=Math.max(1,...S.events.map(e=>e.t))/1000;
+  $('#desc').innerHTML='<b>回放核验：</b>'+esc(S.meta.title||run)+(S.meta.desc?' — '+esc(S.meta.desc):'')+'　点时间轴跳转；在“验收”页逐条标注，或在漏报时刻点“⚑ 标记漏报”。';
+  setViewer(S.meta);
+  if(S.meta.video_url){vid.controls=true;vid.src=S.meta.video_url;await seekTo(VS()+(seek||0));vid.play().catch(()=>{})}
+  else{S.vclock=(seek||0)*1000;S.vplaying=true;S.vlast=performance.now()}
+  dirty=true;
+}
+function seekRel(t){if(S.mode!=='replay')return;const x=Math.max(0,t);if(S.meta.video_url){vid.currentTime=VS()+x/1000;vid.play().catch(()=>{})}else S.vclock=x}
+async function postVerdict(body){
+  if(!S.run)return;const r=await fetch('/api/verdict',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({run:S.run,...body})});
+  if(r.ok){S.verdicts[body.delivery_id||('miss_'+body.t_ms)]=body;if(body.verdict==='clear')delete S.verdicts[body.delivery_id||('miss_'+body.t_ms)];dirty=true}}
+$('#btnLive').onclick=startLive;
+$('#btnStop').onclick=async()=>{if(S.mode==='live')await fetch('/api/stop',{method:'POST'});vid.pause();S.vplaying=false};
+$('#btnReplay').onclick=()=>loadReplay($('#runs').value);
+$('#preset').onchange=showDesc;$('#video').onchange=showDesc;
+$('#tl').onclick=ev=>{if(S.mode!=='replay')return;const r=$('#tl').getBoundingClientRect();seekRel((ev.clientX-r.left)/r.width*(S.meta.duration||0)*1000)};
+document.body.addEventListener('click',async ev=>{
+  const b=ev.target.closest('button');if(!b)return;
+  if(b.dataset.verdict){const cur=(S.verdicts[b.dataset.dl]||{}).verdict;await postVerdict({delivery_id:b.dataset.dl,t_ms:+b.dataset.t,verdict:cur===b.dataset.verdict?'clear':b.dataset.verdict,L:+b.dataset.l});return}
+  if(b.dataset.fb){b.parentElement.querySelectorAll('button').forEach(x=>x.disabled=true);S.fbDone[b.dataset.dl]=b.dataset.fb;
+    await fetch('/api/feedback',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({delivery_id:b.dataset.dl,kind:b.dataset.fb})});return}
+  if(b.dataset.play){const u=S.audio[b.dataset.play];if(u){const v=$('#voice').value;if(v!=='doubao'){if(audioEl)audioEl.pause();audioEl=new Audio(u);audioEl.play()}else playUrl(u)}return}
+  if(b.dataset.seek){seekRel(+b.dataset.seek-15000);return}
+  if(b.dataset.unmiss){await postVerdict({t_ms:+b.dataset.unmiss,verdict:'clear'});return}
+  if(b.id==='btnMiss'){const note=prompt('此刻（'+fmt(S.t)+'）系统应该说什么？简单写一句：','');if(note===null)return;await postVerdict({t_ms:Math.round(S.t),verdict:'missed',note,L:8});return}
+});
+document.querySelectorAll('.tabbar button').forEach(b=>b.onclick=()=>{document.querySelectorAll('.tabbar button').forEach(x=>x.classList.toggle('on',x===b));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('on',t.id==='tab-'+b.dataset.t))});
+(async()=>{await loadPresets();await refreshRuns();
+  const q=new URLSearchParams(location.search);
+  if(q.get('voice'))$('#voice').value=q.get('voice');
+  if(q.get('replay'))loadReplay(q.get('replay'),parseFloat(q.get('t')||'0'));
+  else if(!q.get('preset'))attach();
+  if(q.get('tab'))document.querySelector(`.tabbar button[data-t="${q.get('tab')}"]`)?.click();
+  if(q.get('preset')){$('#preset').value=q.get('preset');showDesc();if(q.get('autostart'))startLive()}
+})();
+})();
+</script>
+</body>
+</html>

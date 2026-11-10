@@ -1,0 +1,57 @@
+# 需求模板（设计文档 §5.3）。条件语法见 pa/agenda/dsl.py。
+- kind: possible_forgotten_item
+  params:
+    item:   {type: OBJECT, cls_in: [phone, keys, key, wallet, glasses, badge, umbrella, laptop, card, purse]}
+    person: {type: PERSON}
+  instantiate:
+    all:
+      - {path: "$item.location.rel", in: ["ON", "INSIDE", "NEAR"]}  # 注意：YAML 里裸写 ON 会被解析成 True
+      - {fn: present, args: ["$person"]}
+      # 只对经手过该物品的人建需求：主人未知、从没见人拿过的物品不触发（实测否则人数×物品数会产生大量误报）
+      - {fn: held_before, args: ["$item", "$person"]}
+  arm:
+    all:
+      - {path: "$person.activity", in: [packing, standing]}
+      - {not: {fn: with, args: ["$item", "$person"]}}
+  fire:
+    all:
+      - {path: "$person.activity", in: [moving_to_exit, leaving]}
+      - {not: {fn: with, args: ["$item", "$person"]}}
+      - {path: "$item.location#status", in: [holds, stale]}
+  resolve:
+    any:
+      - {fn: with, args: ["$item", "$person"]}
+  mode_rule:
+    - when: {all: [{path: "$item.location#status", eq: holds}, {path: "$item.location#source", in: [seen, user_confirmed]}]}
+      cap: REMIND
+    - when: {}
+      cap: ASK
+  cooldown_s: 120
+  max_reminders: 2
+
+- kind: appliance_left_on
+  params:
+    item:   {type: DEVICE, cls_in: [stove, iron, oven, heater, kettle, tap, faucet, light]}
+    person: {type: PERSON}
+  instantiate:
+    all:
+      - {path: "$item.state", eq: "on"}
+      - {fn: present, args: ["$person"]}
+  arm:
+    all:
+      - {path: "$item.state", eq: "on"}
+      - {path: "$person.activity", in: [packing, standing, walking]}
+  fire:
+    all:
+      - {path: "$item.state", eq: "on"}
+      - {path: "$person.activity", in: [moving_to_exit, leaving]}
+  resolve:
+    any:
+      - {path: "$item.state", in: ["off", "closed"]}
+  mode_rule:
+    - when: {all: [{path: "$item.state#status", eq: holds}, {path: "$item.state#source", in: [seen, user_confirmed]}]}
+      cap: REMIND
+    - when: {}
+      cap: ASK
+  cooldown_s: 120
+  max_reminders: 2

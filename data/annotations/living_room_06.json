@@ -1,0 +1,19 @@
+{
+  "video": "living_room_06",
+  "note": "M3-Bench robot living_room_06 的主动机会标注（时间为视频秒）。依据字幕与画面人工标注；用于 pa eval 的窗口口径。 keywords：消息文本或机会描述含任一关键词才算命中这个机会。",
+  "opportunities": [
+    {
+      "id": "umbrella",
+      "desc": "提醒 Sophie 和 Lily 出门带伞",
+      "label": "must_fire",
+      "L": 8,
+      "t_earliest": 870,
+      "t_latest": 892.6,
+      "evidence": "13:57 Jack: So don't forget your umbrellas today! / 14:32 Lily: Let's go get ready / 14:52 Jack: Oh my God your umbrellas!",
+      "keywords": [
+        "伞",
+        "umbrella"
+      ]
+    }
+  ]
+}

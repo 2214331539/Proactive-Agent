@@ -1,0 +1,1050 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>Proactive Agent · 系统架构</title>
+<style>
+:root{--ink:#202d40;--muted:#8190a1;--line:#e9edf2;--teal:#5fb39a;--amber:#d99b55;--rose:#d98a7e}
+*{box-sizing:border-box}
+html,body{margin:0;width:100%;height:100%;font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;color:var(--ink);background:#fbfcfe}
+body{overflow:hidden}
+button,select,input{font:inherit}
+.app{height:100dvh;display:flex;flex-direction:column;min-height:680px;max-width:1980px;margin:auto}
+.header{height:80px;flex:0 0 80px;padding:18px 28px 12px 32px;display:flex;align-items:center;justify-content:space-between;gap:20px}
+.identity{display:flex;align-items:center;gap:15px;min-width:0}
+.logo{width:42px;height:42px;border-radius:14px;background:linear-gradient(135deg,#fff,#edf4ff);border:1px solid #e3eaf2;box-shadow:0 5px 15px #a9b9d01c;display:grid;place-items:center;flex:0 0 auto}
+.logo svg{width:26px;height:26px}
+h1{margin:0;font-size:22px;line-height:1.1;font-weight:680;letter-spacing:-.04em}
+h1 small{font-size:11.5px;font-weight:650;color:#9a6a3c;background:#fbeee0;border-radius:7px;padding:2px 7px;margin-left:8px;letter-spacing:0;vertical-align:3px}
+.header-sub{font-size:12px;color:#6f8093;margin-top:7px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.header-sub em{font-style:normal;color:#2f445c;font-weight:650}
+.controls{display:flex;gap:8px;align-items:center;flex-wrap:nowrap}
+.control{height:36px;padding:0 13px;display:inline-flex;justify-content:center;align-items:center;gap:7px;border:1px solid #e5eaf0;border-radius:10px;background:white;color:#516075;font-size:12px;font-weight:590;cursor:pointer;transition:background .16s,border-color .16s,transform .16s}
+.control:hover{background:#f4f7fb;border-color:#ccd8e6}.control:active{transform:scale(.98)}.control:focus-visible{outline:2px solid #83a8e9;outline-offset:2px}
+.control.primary{background:#263a52;border-color:#263a52;color:white;padding:0 17px}
+.control.primary:hover{background:#354f6d}
+.control svg{width:14px;height:14px}
+.control.icon-only{width:37px;padding:0}
+.control select{background:transparent;color:inherit;border:0;outline:0;cursor:pointer;font-size:12px}
+.live-dot{width:7px;height:7px;background:#68b7a4;border-radius:50%;box-shadow:0 0 0 4px #70c0b126;flex:0 0 auto}
+.main{display:grid;grid-template-columns:minmax(0,1fr) 404px;gap:16px;padding:0 26px 20px 30px;min-height:0;flex:1}
+.left{display:flex;flex-direction:column;gap:12px;min-width:0;min-height:0}
+.stage{position:relative;flex:1;min-height:0;overflow:hidden;border:1px solid #e9edf2;border-radius:22px;background:radial-gradient(ellipse 75% 65% at 46% 52%,#ffffff 10%,#fcfdff 74%,#f8fafc 120%);box-shadow:0 16px 50px #536d9110}
+#world{width:100%;height:100%;display:block;touch-action:none;cursor:grab}
+#world.dragging{cursor:grabbing}#world.pointing{cursor:pointer}
+.stage-top{position:absolute;top:16px;left:20px;right:20px;display:flex;justify-content:space-between;align-items:flex-start;pointer-events:none;gap:12px}
+.rule{display:flex;align-items:center;gap:10px;background:rgba(255,255,255,.92);border:1px solid #ece4d8;border-radius:12px;padding:7px 12px;box-shadow:0 6px 20px #8a6a4512}
+.rule-k{font-size:10px;font-weight:700;letter-spacing:.08em;color:#a2683a;background:#fbeee0;border-radius:6px;padding:2px 7px}
+.rule-f{font:600 13px/1 "JetBrains Mono","Cascadia Mono",Consolas,monospace;color:#2b3f56}
+.rule-d{font-size:11px;color:#8a98a8}
+.scene-tag{font-size:10.5px;line-height:1.55;color:#a3aebb;text-align:right}
+.stage-bottom{position:absolute;bottom:14px;left:20px;right:18px;display:flex;justify-content:space-between;align-items:flex-end;pointer-events:none;gap:12px}
+.legend{display:flex;flex-direction:column;gap:7px}
+.legend-row{display:flex;align-items:center;flex-wrap:wrap;gap:13px;color:#8d9cab;font-size:10.5px}
+.legend-item{display:flex;align-items:center;gap:6px;white-space:nowrap}
+.legend-dot{width:8px;height:8px;border-radius:3px}
+.kchip{font-size:9.5px;font-weight:700;border-radius:5px;padding:1px 6px;white-space:nowrap;flex:0 0 auto}
+.k-ai{background:#fbeee0;color:#a2683a}.k-prog{background:#e8f0fa;color:#4d6f99}.k-store{background:#efebfa;color:#6c5fa6}
+.spill{font-size:9.5px;font-weight:650;border-radius:5px;padding:0 5px;line-height:15px;white-space:nowrap;border:1px dashed #b9c4d1;color:#7c8b9b;background:#fff}
+.spill.partial{border-style:solid;border-color:#e3cfb5;color:#a07444;background:#fdf6ed}
+.hint{font-size:10.5px;color:#a8b3bf;white-space:nowrap}
+.tip{position:absolute;z-index:4;max-width:270px;background:rgba(255,255,255,.97);border:1px solid #e3e9f0;border-radius:12px;padding:9px 12px;box-shadow:0 10px 30px #3c50681c;pointer-events:none;font-size:11.5px;line-height:1.6;color:#4f6276}
+.tip b{font-size:12.5px;color:#22344a;font-weight:700}
+.tip .tip-meta{display:flex;gap:6px;align-items:center;margin:3px 0 4px}
+.tip[hidden]{display:none}
+.timeline{flex:0 0 84px;border:1px solid #e9edf2;border-radius:18px;background:#fff;box-shadow:0 10px 30px #536d910b;padding:0 44px;position:relative;user-select:none}
+.tl-inner{position:relative;height:100%}
+.tl-axis{position:absolute;left:0;right:0;top:24px;height:3px;background:#edf1f5;border-radius:4px}
+.tl-fill{position:absolute;left:0;top:24px;height:3px;width:0;background:linear-gradient(90deg,#83b4e3,#a79ddb 40%,#dfa96d 70%,#7fc1b1);border-radius:4px;pointer-events:none}
+.tl-head{position:absolute;top:15px;width:2px;height:21px;margin-left:-1px;background:#d99b55;border-radius:2px;pointer-events:none}
+.tl-mark{position:absolute;top:19px;width:13px;height:13px;margin-left:-6.5px;border-radius:50%;background:#fff;border:2px solid #cdd7e2;cursor:pointer;transition:transform .15s}
+.tl-mark.val{border-radius:3px;transform:rotate(45deg) scale(.92)}
+.tl-mark.done{border-color:var(--c)}
+.tl-mark.now{background:var(--c);border-color:var(--c);transform:scale(1.25)}
+.tl-mark.val.now{transform:rotate(45deg) scale(1.2)}
+.tl-label{position:absolute;top:39px;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:1px;cursor:pointer;padding:2px 5px;border-radius:7px;white-space:nowrap}
+.tl-label b{font-size:11px;font-weight:620;color:#7d8b9a}
+.tl-label span{font-size:9.5px;color:#a8b3bf;font-variant-numeric:tabular-nums}
+.tl-label.val b{color:#9a6e44}
+.tl-label.now{background:#f3f6fa}.tl-label.now b{color:#22344a;font-weight:720}
+.panel{border:1px solid #e9edf2;border-radius:22px;background:#fff;box-shadow:0 16px 50px #536d910d;display:flex;flex-direction:column;min-height:0;overflow:hidden}
+.tabs{display:flex;gap:2px;padding:10px 16px 0;border-bottom:1px solid #eef1f4;flex:0 0 auto}
+.tab-btn{border:0;background:transparent;padding:9px 12px 10px;font-size:12.5px;font-weight:640;color:#8a99aa;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px}
+.tab-btn.active{color:#263a52;border-bottom-color:#263a52}
+.tab-body{padding:16px 20px 22px;overflow:auto;min-height:0;flex:1}
+.tab-body.hidden{display:none}
+.eyebrow{display:flex;align-items:center;gap:8px;color:#8391a2;font-size:10px;font-weight:690;letter-spacing:.1em;flex-wrap:wrap}
+.eyebrow b{color:#4c5f75;font-variant-numeric:tabular-nums;letter-spacing:.02em}
+.phase-title{font-size:19px;line-height:1.3;letter-spacing:-.03em;font-weight:700;margin:11px 0 6px}
+.phase-desc{font-size:12px;line-height:1.75;color:#6f8195;margin:0}
+.sec{margin-top:18px}
+.sec-head{display:flex;justify-content:space-between;align-items:center;font-size:10.5px;color:#8e9db0;letter-spacing:.06em;font-weight:680;margin-bottom:8px}
+.sec-head .aux{letter-spacing:0;color:#a8b4c1;font-weight:560}
+.card{margin-top:16px;border:1px solid #eef1f5;border-radius:16px;padding:12px 14px 12px;background:#fbfcfe;transition:opacity .25s}
+.card.live{border-color:#efdcc4;background:linear-gradient(180deg,#fffaf3,#fff)}
+.card.dim{opacity:.62}
+.card-head{display:flex;justify-content:space-between;align-items:center;font-size:10.5px;color:#8e9db0;letter-spacing:.06em;font-weight:680}
+.card-head .aux{letter-spacing:0;color:#a8b4c1;font-weight:560}
+.card.live .card-head>span:first-child{color:#a2683a}
+.card-empty{font-size:11.5px;color:#a9b4c0;margin-top:8px}
+.stat3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:10px 0 6px}
+.stat3 div{display:flex;flex-direction:column;gap:2px}
+.stat3 b{font-size:18px;font-weight:700;color:#2b3f56;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.stat3 span{font-size:10.5px;color:#8a98a8}
+.stat3 i{font-style:normal;font-family:"JetBrains Mono",Consolas,monospace;color:#5b6f86;font-weight:700;margin-right:4px}
+svg.vchart{width:100%;height:auto;display:block}
+.verdict{display:flex;align-items:center;gap:9px;margin-top:4px;font-size:11.5px;color:#6f8195}
+.dec-badge{font-size:11px;font-weight:720;border-radius:7px;padding:3px 9px;white-space:nowrap}
+.d-silent{background:#eef1f5;color:#5c6d80}.d-wait{background:#fbe9d3;color:#9a632c}.d-speak{background:#dff2ea;color:#2f7d66}
+table.beliefs{width:100%;border-collapse:collapse;font-size:11px;table-layout:fixed}
+.beliefs th{text-align:left;font-weight:620;color:#a3afbc;font-size:9.5px;letter-spacing:.05em;padding:0 4px 6px 0}
+.beliefs th:nth-child(1){width:38%}.beliefs th:nth-child(2){width:32%}.beliefs th:nth-child(3){width:16%}
+.beliefs td{padding:6px 4px 6px 0;border-top:1px solid #f0f2f6;color:#4f6276;vertical-align:top;word-break:break-word}
+.beliefs td.key{font-family:"JetBrains Mono","Cascadia Mono",Consolas,monospace;font-size:10px;color:#5d6f84}
+.beliefs tr.changed td{background:#fff5e6}
+.beliefs tr.changed{animation:statePop .9s ease}
+.beliefs tr.empty td{color:#a9b4c0;font-style:italic;text-align:center}
+@keyframes statePop{0%{opacity:.35}100%{opacity:1}}
+.tag{display:inline-block;padding:1px 6px;border-radius:6px;font-size:9.5px;font-weight:660;white-space:nowrap}
+.t-seen{background:#e6f0fb;color:#4c74a3}.t-heard{background:#f2ecfb;color:#6f5fa8}.t-user_confirmed{background:#e3f4ed;color:#3b8a70}
+.t-holds{background:#e9f5f1;color:#3d8a72}.t-stale{background:#fdf1e2;color:#a8742f}
+.derived{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:10px}
+.dv{border:1px dashed #d9dfe8;border-radius:10px;padding:6px 8px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.dv span{font-size:9.5px;color:#9aa7b5;font-weight:620}
+.dv b{font-size:11px;color:#3f5268;font-weight:640;line-height:1.4}
+.dv.on{border-color:#d4cdee;background:#faf9fe}
+.opp{border:1px solid #eee5d8;border-radius:12px;padding:9px 11px;background:#fffcf7}
+.opp.resolved{border-color:#d3eadf;background:#f7fcfa}
+.opp-top{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.opp-top code{font:650 11px "JetBrains Mono",Consolas,monospace;color:#7a5a36}
+.opp.resolved .opp-top code{color:#3b7a66}
+.pill{font-size:9.5px;font-weight:700;border-radius:6px;padding:1px 7px}
+.pill.active{background:#fbe9d3;color:#9a632c}.pill.resolved{background:#dff2ea;color:#2f7d66}
+.opp-grid{display:grid;grid-template-columns:34px 1fr;gap:3px 8px;margin-top:7px;font-size:11px;line-height:1.5}
+.opp-grid span{color:#a0acb9}.opp-grid b{color:#4f6276;font-weight:560}
+.need-none{font-size:11.5px;color:#a9b4c0}
+.msg-block{border:1px solid #edf0f5;border-radius:12px;background:#fafbfd;margin-bottom:8px;overflow:hidden}
+.msg-top{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:7px 10px;border-bottom:1px solid #eef1f5;font-size:11px}
+.msg-type{font-weight:720;color:#34485f;display:flex;align-items:center;gap:6px}
+.msg-type i{width:7px;height:7px;border-radius:2px;display:inline-block}
+.msg-route{color:#8a99aa;font-size:10.5px;white-space:nowrap}
+pre.msg{margin:0;padding:8px 10px;font:10.5px/1.55 "JetBrains Mono","Cascadia Mono",Consolas,monospace;color:#4a5a6d;white-space:pre-wrap;overflow-wrap:anywhere;max-height:170px;overflow:auto}
+.j-k{color:#7465b4}.j-s{color:#3d8a76}.j-n{color:#b9772f}
+.mod-index-group{margin-bottom:14px}
+.mod-index-title{display:flex;align-items:baseline;gap:8px;font-size:11px;color:#4c5f75;font-weight:700;margin-bottom:6px}
+.mod-index-title i{width:8px;height:8px;border-radius:3px;display:inline-block}
+.mod-index-title span{font-size:10.5px;color:#a3afbc;font-weight:560}
+.mod-link{display:flex;align-items:center;gap:8px;width:100%;border:1px solid #eef1f5;background:#fbfcfe;border-radius:10px;padding:7px 10px;margin-bottom:5px;cursor:pointer;text-align:left;color:#3f5268;font-size:12px;font-weight:600;white-space:nowrap}
+.mod-link:hover{background:#f3f7fb;border-color:#dbe4ee}
+.mod-link .grow{flex:1;overflow:hidden;text-overflow:ellipsis}
+.mod-chips{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.chip{font-size:10px;font-weight:680;border-radius:6px;padding:2px 7px;background:#f1f4f8;color:#5d6f84}
+.back-btn{border:0;background:transparent;color:#7f90a3;font-size:11px;cursor:pointer;padding:0;margin-left:auto}
+.back-btn:hover{color:#2d4157}
+.mod-name{font-size:20px;letter-spacing:-.03em;font-weight:720;margin:12px 0 6px}
+.mod-role{font-size:12.5px;line-height:1.7;color:#4f6276;margin:0 0 12px}
+dl.fields{margin:0}
+dl.fields div{display:grid;grid-template-columns:44px 1fr;gap:10px;padding:8px 0;border-top:1px solid #f0f2f6;font-size:11.5px;line-height:1.65}
+dl.fields dt{color:#9aa7b5;font-weight:620;font-size:10.5px}
+dl.fields dd{margin:0;color:#43566c}
+dl.fields dd code{font:10.5px/1.6 "JetBrains Mono",Consolas,monospace;color:#5d6f84;background:#f5f7fa;border-radius:5px;padding:1px 5px}
+.io{display:flex;flex-direction:column;gap:5px}
+.io button{display:flex;gap:7px;align-items:center;border:1px solid #eef1f5;background:#fbfcfe;border-radius:9px;padding:6px 9px;font-size:11px;color:#4a5d72;cursor:pointer;text-align:left}
+.io button:hover{background:#f3f7fb}
+.io button i{width:7px;height:7px;border-radius:2px;flex:0 0 auto}
+.io button em{font-style:normal;color:#8e9dad;margin-left:auto;font-size:10.5px}
+.mod-now{margin-top:12px;font-size:11px;line-height:1.6;color:#8a6a45;background:#fdf5ea;border-radius:10px;padding:8px 10px}
+.mod-now[hidden]{display:none}
+.def-hero{font-size:15px;line-height:1.75;color:#3a4d63;font-weight:560;padding:4px 2px 14px;border-bottom:1px solid #eef1f4}
+.def-hero em{font-style:normal;color:#22344a;font-weight:720;background:linear-gradient(transparent 62%,#fbe5c8 62%)}
+.def-sec{padding:16px 0 4px;border-bottom:1px solid #f1f3f6}
+.def-sec:last-child{border-bottom:0}
+.def-q{display:flex;align-items:baseline;gap:8px;font-size:14px;font-weight:720;color:#22344a;margin-bottom:10px}
+.def-q span{font-size:10.5px;font-weight:600;color:#a3afbc}
+table.mx{width:100%;border-collapse:collapse;font-size:11px;table-layout:fixed}
+.mx th{font-size:10px;color:#9aa7b5;font-weight:650;padding:0 0 6px;text-align:center}
+.mx th:first-child{text-align:left;width:40%}.mx th:last-child{text-align:right;width:20%}
+.mx td{padding:6px 0;border-top:1px solid #f0f2f6;text-align:center;color:#4f6276}
+.mx td:first-child{text-align:left}.mx td:last-child{text-align:right;font-weight:650}
+.mx .y{color:#3d9a7e;font-weight:800}.mx .n{color:#cf7d70;font-weight:800}.mx .na{color:#c3ccd6}
+.mx td.good{color:#2f7d66}.mx td.weak{color:#a07444}.mx td.no{color:#8d9aa8}
+.mx-legend{font-size:10px;color:#a0acb9;margin-top:6px;line-height:1.6}
+.formula{font:600 12px/1.6 "JetBrains Mono",Consolas,monospace;color:#2b3f56;background:#f7f8fb;border-radius:10px;padding:8px 10px;margin-bottom:8px}
+.formula small{display:block;font:500 10.5px/1.5 Inter,"Microsoft YaHei",sans-serif;color:#8a98a8;margin-top:2px}
+.q6{display:grid;grid-template-columns:repeat(3,1fr);gap:4px 10px;margin:4px 0 10px;font-size:10.5px;color:#6f8195}
+.q6 i{font:normal 700 11px "JetBrains Mono",Consolas,monospace;color:#9a632c;margin-right:5px}
+svg.dsvg{width:100%;height:auto;display:block}
+.src-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.src{border:1px solid #e7ecf2;border-radius:10px;padding:7px 8px;background:#fbfcfe}
+.src.todo{border-style:dashed;background:#fff}
+.src b{display:block;font-size:11.5px;color:#34485f}
+.src span{display:block;font-size:10px;color:#8e9cab;line-height:1.45;margin-top:2px}
+.src em{font-style:normal;font-size:9px;font-weight:700;color:#3d8a72;float:right}
+.src.todo em{color:#a3afbc}
+.lv{display:grid;grid-template-columns:repeat(4,1fr);gap:3px;margin-top:10px}
+.lv div{padding:7px 6px 6px;font-size:10.5px;color:#5d6f84;background:#f3f5f9;line-height:1.35}
+.lv div:first-child{border-radius:9px 0 0 9px}.lv div:last-child{border-radius:0 9px 9px 0}
+.lv b{display:block;font-size:11px;color:#34485f}
+.lv .now{background:#e7eef8}.lv .goal{background:#fbe9d3}
+.lv-cap{display:grid;grid-template-columns:repeat(4,1fr);gap:3px;font-size:9.5px;color:#a0acb9;margin-top:4px;text-align:center}
+.def-note{font-size:11px;line-height:1.7;color:#7d8ea0;margin:8px 0 6px}
+#err{position:fixed;left:12px;bottom:12px;z-index:9;background:#fff0ef;color:#a33b32;border:1px solid #f1c3be;border-radius:10px;padding:8px 12px;font-size:12px}
+#err[hidden]{display:none}
+@media(max-width:1180px){.main{grid-template-columns:minmax(0,1fr) 350px}.rule-d{display:none}}
+@media(max-width:860px){body{overflow:auto}.app{height:auto}.main{display:flex;flex-direction:column}.stage{height:560px;flex:0 0 560px}.panel{min-height:560px}.controls{flex-wrap:wrap}.header{height:auto;flex-wrap:wrap}.header-sub{white-space:normal}}
+@media(prefers-reduced-motion:reduce){.tl-mark,.control{transition:none}.beliefs tr.changed{animation:none}}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="header">
+    <div class="identity">
+      <div class="logo" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M4 14C7 7 9 7 12 14S18 19 20 12" stroke="#6595cc" stroke-width="2.2" stroke-linecap="round"/><circle cx="5" cy="15.5" r="2.2" fill="#7cbcb4"/><circle cx="18.5" cy="13.5" r="2.2" fill="#d9ae79"/></svg></div>
+      <div><h1>Proactive Agent<small>系统架构</small></h1>
+        <div class="header-sub">主动 = <em>未被要求</em>时，系统判断<em>此刻开口比继续沉默更有价值</em>而发起的介入</div></div>
+    </div>
+    <div class="controls">
+      <button class="control primary" id="playBtn" title="播放 / 暂停（空格）"><svg viewBox="0 0 16 16" fill="currentColor" id="playIcon"></svg><span id="playText">暂停</span></button>
+      <button class="control icon-only" id="prevBtn" title="上一阶段（←）"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="m13 3-7 5 7 5M3.5 3v10"/></svg></button>
+      <button class="control" id="stepBtn" title="下一阶段（→）"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="m3 3 7 5-7 5M12.5 3v10"/></svg>单步</button>
+      <button class="control icon-only" id="resetBtn" title="重新开始"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M13.8 7A5.9 5.9 0 1 0 14 9M14 3v4h-4"/></svg></button>
+      <button class="control icon-only" id="viewBtn" title="重置视角"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="m8 1 6 3.5v7L8 15l-6-3.5v-7Z"/><path d="M8 8 2 4.5M8 8l6-3.5M8 8v7"/></svg></button>
+      <label class="control">速度 <select id="speed" aria-label="播放速度"><option value="0.5">0.5×</option><option value="0.75">0.75×</option><option value="1" selected>1×</option><option value="1.5">1.5×</option><option value="2">2×</option></select></label>
+    </div>
+  </header>
+  <main class="main">
+    <div class="left">
+      <section class="stage" aria-label="系统架构 3D 场景">
+        <canvas id="world"></canvas>
+        <div class="stage-top">
+          <div class="rule"><span class="rule-k">开口条件</span><span class="rule-f">U(m*) &gt; max(0, V(等))</span><span class="rule-d">U = 预期避免的损失 − 说错的代价 − 打扰的代价</span></div>
+          <span class="scene-tag">剧情：M3-Bench living_room_06（13:30 起）真实对话<br>补丁与数值为示意 · 点击组件看细节</span>
+        </div>
+        <div class="stage-bottom">
+          <div class="legend">
+            <div class="legend-row"><span class="legend-item"><span class="kchip k-ai">AI</span>模型调用</span><span class="legend-item"><span class="kchip k-prog">程序</span>确定性代码</span><span class="legend-item"><span class="kchip k-store">存储</span>SQLite</span><span class="legend-item"><span class="spill partial">扩展</span>已有，需改造</span><span class="legend-item"><span class="spill">待建</span>虚线框</span></div>
+            <div class="legend-row" id="layerLegend"></div>
+          </div>
+          <span class="hint">拖动旋转 · 滚轮缩放 · 空格播放 · ← → 切换</span>
+        </div>
+        <div class="tip" id="tip" hidden></div>
+      </section>
+      <section class="timeline" aria-label="剧情时间轴"><div class="tl-inner" id="tl"></div></section>
+    </div>
+    <aside class="panel" aria-label="剧情、组件与主动性定义">
+      <div class="tabs" role="tablist">
+        <button class="tab-btn active" data-tab="run" role="tab">剧情</button>
+        <button class="tab-btn" data-tab="mod" role="tab">组件</button>
+        <button class="tab-btn" data-tab="def" role="tab">主动性</button>
+      </div>
+      <div class="tab-body" id="tab-run">
+        <div class="eyebrow"><span class="live-dot"></span>视频时刻 <b id="clock">13:30</b> · 状态 v<b id="ver">0</b></div>
+        <div class="phase-title" id="phaseTitle"></div>
+        <p class="phase-desc" id="phaseDesc"></p>
+        <div class="card" id="valCard"></div>
+        <div class="sec"><div class="sec-head"><span>状态快照</span><span class="aux">C5 世界 · C6–C8 人</span></div>
+          <table class="beliefs"><thead><tr><th>信念</th><th>值</th><th>来源</th><th>状态</th></tr></thead><tbody id="beliefs"></tbody></table>
+          <div class="derived" id="derived"></div></div>
+        <div class="sec"><div class="sec-head"><span>机会</span><span class="aux">C9</span></div><div id="oppBox"></div></div>
+        <div class="sec"><div class="sec-head"><span>本阶段的消息</span><span class="aux" id="msgCount"></span></div><div id="msgs"></div></div>
+      </div>
+      <div class="tab-body hidden" id="tab-mod"></div>
+      <div class="tab-body hidden" id="tab-def"></div>
+    </aside>
+  </main>
+</div>
+<div id="err" hidden></div>
+<script>
+(()=>{
+'use strict';
+window.addEventListener('error',e=>{const b=document.getElementById('err');b.textContent='脚本错误：'+e.message;b.hidden=false});
+const canvas=document.querySelector('#world'),ctx=canvas.getContext('2d',{alpha:true});
+const $=id=>document.getElementById(id);
+const FONT='Inter,-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif';
+const KIND={
+ ai:{label:'AI',base:'#f5ece2',accent:'#e0a873',chipBg:'#fbeee0',chipInk:'#a2683a',stroke:'#e4d2be'},
+ prog:{label:'程序',base:'#e5edf8',accent:'#7ea8db',chipBg:'#e8f0fa',chipInk:'#4d6f99',stroke:'#cfdbe8'},
+ store:{label:'存储',base:'#ebe8f6',accent:'#a99ddf',chipBg:'#efebfa',chipInk:'#6c5fa6',stroke:'#d8d2ee'}
+};
+const LAYERS={
+ in:{name:'输入层',sub:'挑出值得看的画面',color:'#83B4E3'},
+ per:{name:'感知层',sub:'画面 → 状态补丁',color:'#62AFCF'},
+ st:{name:'状态层',sub:'世界模型 · 单写者',color:'#A79DDB'},
+ dec:{name:'决策层',sub:'发现 → 估值 → 门控',color:'#DFA96D'},
+ out:{name:'表达层',sub:'措辞 → 复核 → 输出',color:'#7FC1B1'},
+ mem:{name:'记忆层',sub:'后台，不阻塞热路径',color:'#A9B6C8'}
+};
+const LAYER_ORDER=['in','per','st','dec','out','mem'];
+const ST_LABEL={built:'已实现',partial:'扩展',new:'待建'};
+const SRC_LABEL={seen:'看到',heard:'听到',user_confirmed:'用户确认',inferred:'推断'};
+const STAGES=['坐着','起身准备','走向门口','出门'];
+const DEC={SILENT:{label:'沉默',cls:'d-silent'},WAIT:{label:'再等等',cls:'d-wait'},REMIND:{label:'语音提醒',cls:'d-speak'}};
+
+/* ---------------- 组件 ---------------- */
+const nodes=[
+ {id:'source',code:'C1',title:'视频源 · 时钟',kind:'prog',st:'built',layer:'in',deco:'camera',x:-9.1,z:.35,w:1.3,d:1.4,h:.45,lab:1.0},
+ {id:'gate',code:'C2',title:'帧门控',kind:'prog',st:'built',layer:'in',deco:'gate',x:-7.35,z:-1.15,w:1.25,d:1.15,h:.42,lab:.9},
+ {id:'speech',code:'C3',title:'语音 · 身份',kind:'ai',st:'built',layer:'in',deco:'wave',x:-7.35,z:1.8,w:1.25,d:1.15,h:.42,lab:.86},
+ {id:'vlm',code:'C4',title:'感知 VLM',kind:'ai',st:'built',layer:'per',deco:'grid',x:-4.9,z:.25,w:1.5,d:1.6,h:.55,lab:.92},
+ {id:'state',code:'C5',title:'FastState',kind:'prog',st:'built',layer:'st',deco:'state',x:-1.85,z:.25,w:2.0,d:2.0,h:.46,lab:1.12},
+ {id:'uv',code:'C6',title:'UserView',kind:'prog',st:'new',layer:'st',deco:'uv',x:.95,z:-1.7,w:1.2,d:1.0,h:.36,lab:.78},
+ {id:'goal',code:'C7',title:'GoalFilter',kind:'prog',st:'new',layer:'st',deco:'goal',x:.95,z:.25,w:1.2,d:1.0,h:.36,lab:.86},
+ {id:'rc',code:'C8',title:'Receptivity',kind:'prog',st:'new',layer:'st',deco:'rc',x:.95,z:2.15,w:1.2,d:1.0,h:.36,lab:.78},
+ {id:'opp',code:'C9',title:'机会发现',kind:'prog',st:'partial',layer:'dec',deco:'opp',x:3.3,z:-.7,w:1.3,d:1.3,h:.42,lab:.88},
+ {id:'val',code:'C10',title:'价值估计',kind:'ai',st:'partial',layer:'dec',deco:'val',x:4.7,z:.85,w:1.35,d:1.35,h:.46,lab:1.0},
+ {id:'vgate',code:'C11',title:'价值门控',kind:'prog',st:'new',layer:'dec',deco:'vgate',x:6.3,z:-.55,w:1.2,d:1.2,h:.4,lab:.98},
+ {id:'draft',code:'C12',title:'回复生成',kind:'ai',st:'built',layer:'out',deco:'bars',x:8.5,z:-1.5,w:1.35,d:1.2,h:.46,lab:.95},
+ {id:'policy',code:'C13',title:'发送前复核',kind:'prog',st:'partial',layer:'out',deco:'pillars',x:9.6,z:.45,w:1.1,d:1.05,h:.4,lab:1.0},
+ {id:'output',code:'C14',title:'输出 · 反馈',kind:'prog',st:'built',layer:'out',deco:'output',x:10.5,z:2.2,w:1.25,d:1.15,h:.38,lab:.8},
+ {id:'consol',code:'C15',title:'慢环整理',kind:'ai',st:'built',layer:'mem',deco:'ring',x:-1.2,z:-4.45,w:1.35,d:1.1,h:.45,lab:.9},
+ {id:'ltm',code:'C16',title:'长期记忆',kind:'store',st:'built',layer:'mem',deco:'stack',x:1.2,z:-4.45,w:1.3,d:1.1,h:.4,lab:.85},
+ {id:'log',code:'C17',title:'日志 · 决策日志',kind:'store',st:'partial',layer:'mem',deco:'stack',x:3.6,z:-4.45,w:1.3,d:1.1,h:.4,lab:.85},
+ {id:'eval',code:'C18',title:'评测',kind:'prog',st:'partial',layer:'mem',deco:'evalbars',x:5.95,z:-4.45,w:1.3,d:1.1,h:.38,lab:.85}
+];
+const byId=Object.fromEntries(nodes.map(n=>[n.id,n]));
+const P=(x,y,z)=>({x,y,z});
+
+const zones=[
+ {layer:'in',pts:[[-10.2,-2.2],[-6.4,-2.2],[-6.4,3.15],[-10.2,3.15]],lx:-10.05,lz:2.88},
+ {layer:'per',pts:[[-6.0,-1.5],[-3.85,-1.5],[-3.85,1.95],[-6.0,1.95]],lx:-5.88,lz:1.7},
+ {layer:'st',pts:[[-3.4,-2.65],[1.95,-2.65],[1.95,3.15],[-3.4,3.15]],lx:-3.27,lz:2.88},
+ {layer:'dec',pts:[[2.3,-1.5],[7.1,-1.5],[7.1,2.05],[2.3,2.05]],lx:2.43,lz:1.8},
+ {layer:'out',pts:[[7.4,-2.45],[11.55,-2.45],[11.55,3.5],[7.4,3.5]],lx:7.53,lz:3.22},
+ {layer:'mem',pts:[[-3.4,-5.4],[7.0,-5.4],[7.0,-3.45],[-3.4,-3.45]],lx:-3.27,lz:-3.68}
+];
+
+/* ---------------- 数据流 ---------------- */
+function edgePt(n,tx,tz,m=.06){
+ const dx=tx-n.x,dz=tz-n.z,t=Math.min((n.w/2+m)/Math.max(Math.abs(dx),1e-6),(n.d/2+m)/Math.max(Math.abs(dz),1e-6));
+ return P(n.x+dx*t,.55,n.z+dz*t);
+}
+function mk(id,from,to,layer,msg,o={}){
+ const a=byId[from],b=byId[to],via=o.via||[],dz=o.dz||0;
+ const f=via.length?via[0]:b,l=via.length?via[via.length-1]:a;
+ const s=edgePt(a,f.x,f.z-dz),e=edgePt(b,l.x,l.z-dz);s.z+=dz;e.z+=dz;
+ const pts=via.length?[s,...via.map(v=>P(v.x,v.y??.9,v.z)),e]:[s,P((s.x+e.x)/2,o.arc??.85,(s.z+e.z)/2),e];
+ return {id,from,to,layer,msg,pts,rate:o.rate||1,lu:o.lu,lo:o.lo,bg:!!o.bg,dash:!!o.dash};
+}
+const curves=[
+ mk('src_gate','source','gate','in','帧 · 5 FPS',{arc:.8,rate:1.4}),
+ mk('src_speech','source','speech','in','音频 / 字幕',{arc:.8,rate:1.3}),
+ mk('gate_vlm','gate','vlm','in','画面窗口 · 3 帧'),
+ mk('speech_vlm','speech','vlm','in','话语 · 说话人',{lo:15}),
+ mk('slice','state','vlm','st','状态切片 + CHECK',{dz:-.4,arc:1.15}),
+ mk('patch','vlm','state','st','StatePatch',{dz:.5,lo:14}),
+ mk('d_uv','state','uv','st','谁看到了',{arc:.95}),
+ mk('d_goal','state','goal','st','在做什么',{arc:1.05,lo:-12}),
+ mk('d_rc','state','rc','st','方不方便',{arc:.95,lo:14}),
+ mk('delta','state','opp','dec','StateDelta',{via:[{x:.95,y:1.0,z:-.72}],lu:.62,lo:-12}),
+ mk('uv_opp','uv','opp','dec','认知差',{arc:.95}),
+ mk('goal_val','goal','val','dec','目标 · H',{arc:1.0,lu:.4,lo:14}),
+ mk('rc_val','rc','val','dec','q · C_int',{arc:.9,lu:.45,lo:14}),
+ mk('opp_val','opp','val','dec','Opportunity',{arc:.95,lo:-12,lu:.45}),
+ mk('val_gate','val','vgate','dec','U(m) · V(等)',{arc:.95,lo:15,lu:.55}),
+ mk('gate_draft','vgate','draft','out','方式 · 时刻 · 对象',{arc:1.0,lo:15,lu:.6}),
+ mk('draft_pol','draft','policy','out','草稿 + claims',{arc:.9}),
+ mk('deliver','policy','output','out','投递',{arc:.85}),
+ mk('feedback','output','state','out','反馈 → 用户补丁',{via:[{x:10.2,y:.3,z:3.85},{x:4.0,y:.2,z:3.9},{x:-1.3,y:.25,z:3.35}],rate:.5,lu:.5,lo:12}),
+ mk('speech_consol','speech','consol','mem','每句话',{via:[{x:-5.9,y:1.8,z:-1.9},{x:-3.3,y:1.4,z:-4.0}],bg:true,lu:.4}),
+ mk('consol_opp','consol','opp','mem','请求 → 机会',{via:[{x:1.7,y:1.7,z:-2.95}],bg:true,lu:.55}),
+ mk('consol_ltm','consol','ltm','mem','情节',{arc:.75,bg:true}),
+ mk('ltm_val','ltm','val','mem','历史',{via:[{x:3.7,y:1.5,z:-2.5}],bg:true,lu:.45}),
+ mk('state_log','state','log','mem','补丁 · 变化',{via:[{x:.0,y:1.3,z:-3.1}],bg:true,lu:.6}),
+ mk('gate_log','vgate','log','mem','决策日志（含沉默）',{via:[{x:5.0,y:1.35,z:-2.7}],bg:true,lu:.5}),
+ mk('log_eval','log','eval','mem','NPV → PG',{arc:.75,bg:true}),
+ mk('focus','opp','gate','dec','重点关注 · 1.5 s 心跳',{via:[{x:1.6,y:2.1,z:-2.95},{x:-4.7,y:1.95,z:-2.45}],bg:true,dash:true,rate:.55,lu:.5})
+];
+const STEADY=new Set(['src_gate','src_speech']);
+
+/* ---------------- 剧情 ---------------- */
+const B=(k,v,src='seen',st='holds')=>[k,v,src,st];
+const UMB=B('umbrella_1.location','ON shelf_1');
+const phases=[
+ {t:0,clock:'13:30',mark:'接入',layer:'in',dwell:4.2,title:'视频与字幕流入',
+  desc:'三人在客厅聊瑜伽。帧门控每 4 秒发一次心跳窗口，字幕按说话人逐句到达。还没有任何机会，决策层不计算。',
+  focus:['source','gate','speech'],flows:['src_gate','src_speech','gate_vlm'],ver:0,beliefs:[],changed:[],rc:{label:'说话中',lvl:'high'},
+  msgs:[{type:'WindowRequest',layer:'in',route:'C2 → C4',body:{window_id:'w_000',seq:0,trigger:'heartbeat',frames:['f_0002','f_0004','f_0006'],t_avail_ms:400}}]},
+ {t:15,clock:'13:45',mark:'建状态',layer:'st',dwell:4.6,title:'感知补丁建立初始状态',
+  desc:'VLM 拿到空切片，用 new 创建三个人、伞和门，用 link 把人和说话人对上号。State Actor 逐条校验后提交，状态从 v0 到 v6。',
+  focus:['gate','vlm','state','speech'],flows:['gate_vlm','speech_vlm','slice','patch'],ver:6,
+  beliefs:[B('Sophie.activity','talking'),B('Lily.activity','talking'),UMB],changed:['Sophie.activity','Lily.activity','umbrella_1.location'],goal:{p:.3,stage:0},rc:{label:'说话中',lvl:'high'},
+  msgs:[{type:'StatePatch',layer:'st',route:'C4 → C5 · w_003',body:{patch_id:'patch_003',slice_version:0,ops:[{op:'new',tmp:'n1',type:'PERSON',label:'P1'},{op:'link',person:'n1',anchor:'voice:Sophie'},{op:'new',tmp:'n4',type:'OBJECT',cls:'umbrella'},{op:'set',key:'n4.location',value:{rel:'ON',ref:'shelf_1'},src:'seen'}],latency_ms:1480}}]},
+ {t:28.8,clock:'13:58',mark:'听到请求',layer:'mem',dwell:4.8,title:'听到请求，机会出现',
+  desc:'Jack：“It looks like it may be rainy. So don’t forget your umbrellas today!” 逐句扫描判定这是请求，慢环把它编译成机会：对象是要出门的 Sophie 和 Lily，期限是出门之前。',
+  focus:['speech','consol','opp'],flows:['speech_consol','consol_opp'],ver:7,
+  beliefs:[B('Sophie.activity','talking'),B('Lily.activity','talking'),UMB],changed:[],goal:{p:.3,stage:0},rc:{label:'说话中',lvl:'high'},
+  opp:{key:'forget:umbrella',status:'active',src:'① 用户请求',who:'Sophie、Lily',problem:'出门没带伞会淋雨（L = 8）',deadline:'出门之前'},
+  msgs:[{type:'Opportunity',layer:'dec',route:'C15 → C9',body:{key:'forget:umbrella',source:'request',addressee:['Sophie','Lily'],problem:'出门没带伞会淋雨',category:'essential',evidence:['utt_041 Jack: “don’t forget your umbrellas today!”'],deadline_hint:'goal:leave_home',status:'active'}}]},
+ {t:31,clock:'14:01',mark:'沉默',layer:'dec',dwell:6.2,title:'第一次估值：沉默',
+  desc:'两人回应“thank you for reminding”，UserView 记下她们已经知道，q = 0.3。离出门还早，p 只有 0.13。三种说法的价值都为负，所以不开口，只写决策日志。',
+  focus:['uv','opp','val','vgate','log'],flows:['d_uv','uv_opp','opp_val','val_gate','gate_log'],ver:7,uv:'两人都听到了 Jack 的提醒',
+  beliefs:[B('Sophie.activity','talking'),B('Lily.activity','talking'),UMB],changed:[],goal:{p:.3,stage:0},rc:{label:'说话中',lvl:'high'},
+  opp:{key:'forget:umbrella',status:'active',src:'① 用户请求',who:'Sophie、Lily',problem:'出门没带伞会淋雨（L = 8）',deadline:'出门之前'},
+  val:{p:.13,q:.3,H:.02,U:{remind:-2.7,ask:-2.8,ambient:-.06},vw:1.9,dec:'SILENT',why:'最高也只有 −0.06，不值得开口'},
+  msgs:[{type:'ValueEstimate',layer:'dec',route:'C10 → C11',body:{opportunity:'forget:umbrella',p:0.13,q:0.3,L:8,H:0.02,U:{REMIND:-2.7,ASK:-2.8,AMBIENT:-0.06},V_wait:1.9,decision:'SILENT'}}]},
+ {t:45,clock:'14:15',mark:'只确认',layer:'mem',dwell:4.6,title:'状态稳定：只确认，不重算',
+  desc:'三人在聊晚饭，人和伞都没动。VLM 对 CHECK 项只回答 still，没有状态变化，机会不重新估值。慢环把这半分钟整理成情节 ep_002。',
+  focus:['vlm','state','consol','ltm'],flows:['gate_vlm','slice','patch','consol_ltm'],ver:7,uv:'两人都听到了 Jack 的提醒',
+  beliefs:[B('Sophie.activity','talking'),B('Lily.activity','talking'),UMB],changed:[],goal:{p:.3,stage:0},rc:{label:'说话中',lvl:'high'},
+  opp:{key:'forget:umbrella',status:'active',src:'① 用户请求',who:'Sophie、Lily',problem:'出门没带伞会淋雨（L = 8）',deadline:'出门之前'},
+  msgs:[{type:'StatePatch',layer:'st',route:'C4 → C5 · w_019',body:{trigger:'heartbeat',slice_version:7,ops:[{op:'still',keys:['umbrella_1.location','Sophie.activity','Lily.activity']}],delta:null}},
+        {type:'Episode',layer:'mem',route:'C15 → C16',body:{episode_id:'ep_002',span:'13:45–14:15',t_avail:'14:19',text:'Jack 提醒今天可能下雨、别忘了带伞；三人约好晚饭吃牛肉和西兰花。'}}]},
+ {t:62,clock:'14:32',mark:'起身',layer:'st',dwell:5,title:'起身准备，出门概率上升',
+  desc:'Sophie 发现已经 11 点，Lily 说“Let’s go get ready”。GoalFilter 融合起身和这句话，出门概率升到 0.8；两人还在说话，打扰代价翻倍。门控把伞和门设为重点关注，回复生成提前起草。',
+  focus:['vlm','state','goal','rc','gate','draft'],flows:['patch','d_goal','d_rc','focus'],ver:9,uv:'两人都听到了 Jack 的提醒',draft:'drafting',
+  beliefs:[B('Sophie.activity','standing'),B('Lily.activity','standing'),UMB],changed:['Sophie.activity','Lily.activity'],goal:{p:.8,stage:1},rc:{label:'说话中 · 打扰 ×2',lvl:'high'},
+  opp:{key:'forget:umbrella',status:'active',src:'① 用户请求',who:'Sophie、Lily',problem:'出门没带伞会淋雨（L = 8）',deadline:'出门之前'},
+  msgs:[{type:'StatePatch',layer:'st',route:'C4 → C5 · w_031',body:{trigger:'utterance',slice_version:7,ops:[{op:'set',key:'Sophie.activity',value:'standing',src:'seen'},{op:'set',key:'Lily.activity',value:'standing',src:'seen'},{op:'said',speaker:'Lily',intent:'info',content:'Let’s go get ready'}]}},
+        {type:'GoalEstimate',layer:'st',route:'C7 → C9 / C10',body:{person:'Sophie',leave_home:0.8,stage:'起身准备',evidence:['activity=standing','“Oh my God 11!”','“Let’s go get ready”']}}]},
+ {t:62.5,clock:'14:32',mark:'再等等',layer:'dec',dwell:6.2,title:'第二次估值：再等等',
+  desc:'p 升到 0.34，提示音的价值已经转正。但再看几秒就能知道她们拿没拿伞，等待的价值约 1.4，更高，所以继续观察。',
+  focus:['goal','rc','opp','val','vgate'],flows:['goal_val','rc_val','opp_val','val_gate','gate_log'],ver:9,uv:'两人都听到了 Jack 的提醒',draft:'ready',
+  beliefs:[B('Sophie.activity','standing'),B('Lily.activity','standing'),UMB],changed:[],goal:{p:.8,stage:1},rc:{label:'说话中 · 打扰 ×2',lvl:'high'},
+  opp:{key:'forget:umbrella',status:'active',src:'① 用户请求',who:'Sophie、Lily',problem:'出门没带伞会淋雨（L = 8）',deadline:'出门之前'},
+  val:{p:.34,q:.3,H:.25,U:{remind:-1.28,ask:-1.54,ambient:.34},vw:1.4,dec:'WAIT',why:'提示音 +0.34，低于等待 1.4'},
+  msgs:[{type:'ValueEstimate',layer:'dec',route:'C10 → C11',body:{opportunity:'forget:umbrella',p:0.34,q:0.3,L:8,H:0.25,U:{REMIND:-1.28,ASK:-1.54,AMBIENT:0.34},V_wait:1.4,decision:'WAIT'}}]},
+ {t:70,clock:'14:40',mark:'走向门口',layer:'st',dwell:5,title:'走向门口，截止临近',
+  desc:'两人匆忙走向门口，手里空着。补丁写入 moving_to_exit，并确认伞还在架子上。GoalFilter 判断出门概率 0.97、已到“走向门口”阶段，截止风险 H = 0.85；她们不再说话，打扰代价回到 1。',
+  focus:['gate','vlm','state','goal','rc','opp'],flows:['gate_vlm','patch','d_goal','d_rc','delta'],ver:11,uv:'两人都听到了 Jack 的提醒',draft:'ready',
+  beliefs:[B('Sophie.activity','moving_to_exit'),B('Lily.activity','moving_to_exit'),UMB],changed:['Sophie.activity','Lily.activity'],goal:{p:.97,stage:2},rc:{label:'匆忙 · 安静',lvl:'low'},
+  opp:{key:'forget:umbrella',status:'active',src:'① 用户请求',who:'Sophie、Lily',problem:'出门没带伞会淋雨（L = 8）',deadline:'出门之前'},
+  msgs:[{type:'StatePatch',layer:'st',route:'C4 → C5 · w_036',body:{trigger:'change',slice_version:9,ops:[{op:'act',type:'MOVING_TOWARD',subj:'Sophie',obj:'door_1'},{op:'set',key:'Lily.activity',value:'moving_to_exit',src:'seen'},{op:'still',keys:['umbrella_1.location']}]}},
+        {type:'GoalEstimate',layer:'st',route:'C7 → C10',body:{person:'Sophie',leave_home:0.97,stage:'走向门口',hazard:0.85}}]},
+ {t:70.4,clock:'14:40',mark:'提醒',layer:'dec',dwell:6.2,title:'第三次估值：提醒',
+  desc:'p = 0.58，匆忙让 q 降到 0.15。提醒的价值 +1.92，高于询问和提示音，也高于等待价值 0.3。门控决定：现在用语音提醒 Sophie 和 Lily。',
+  focus:['val','vgate','draft','log'],flows:['opp_val','val_gate','gate_draft','gate_log'],ver:11,uv:'两人都听到了 Jack 的提醒',draft:'ready',
+  beliefs:[B('Sophie.activity','moving_to_exit'),B('Lily.activity','moving_to_exit'),UMB],changed:[],goal:{p:.97,stage:2},rc:{label:'匆忙 · 安静',lvl:'low'},
+  opp:{key:'forget:umbrella',status:'active',src:'① 用户请求',who:'Sophie、Lily',problem:'出门没带伞会淋雨（L = 8）',deadline:'出门之前'},
+  val:{p:.58,q:.15,H:.85,U:{remind:1.92,ask:1.43,ambient:1.0},vw:.3,dec:'REMIND',why:'提醒 +1.92 最高，且高于等待 0.3'},
+  msgs:[{type:'ValueEstimate',layer:'dec',route:'C10 → C11',body:{opportunity:'forget:umbrella',p:0.58,q:0.15,L:8,H:0.85,U:{REMIND:1.92,ASK:1.43,AMBIENT:1.0},V_wait:0.3,decision:'REMIND',addressee:['Sophie','Lily']}}]},
+ {t:71,clock:'14:41',mark:'投递',layer:'out',dwell:5,title:'复核通过，投递',
+  desc:'直接用 14:32 预生成的草稿。复核逐项通过：机会未解决，触发证据仍然新鲜，“伞在架子上”有 6 秒前的亲眼证据、可以用确定语气，距上次投递超过 30 秒。',
+  focus:['draft','policy','output'],flows:['draft_pol','deliver'],ver:11,uv:'两人都听到了 Jack 的提醒',draft:'sent',policy:'pass',bubble:true,
+  beliefs:[B('Sophie.activity','moving_to_exit'),B('Lily.activity','moving_to_exit'),UMB],changed:[],goal:{p:.97,stage:2},rc:{label:'匆忙 · 安静',lvl:'low'},
+  opp:{key:'forget:umbrella',status:'active',src:'① 用户请求',who:'Sophie、Lily',problem:'出门没带伞会淋雨（L = 8）',deadline:'出门之前'},
+  msgs:[{type:'Delivery',layer:'out',route:'C13 → C14',body:{delivery_id:'dl_001',opportunity:'forget:umbrella',mode:'REMIND',to:['Sophie','Lily'],text:'外面可能下雨，伞还在架子上，记得带上。',claims:[{key:'umbrella_1.location',stated_as:'certain'},{key:'rain',stated_as:'probable'}],draft_origin:'prefetch',checks:{resolved:false,evidence:'fresh',claims:'ok',rate:'ok',count:'1/2'}}}]},
+ {t:75,clock:'14:45',mark:'已解决',layer:'out',dwell:5,title:'拿起伞，机会关闭（假设）',
+  desc:'假设提醒生效：VLM 看到 Sophie 拿起伞，机会转为已解决；她点“已拿到”，反馈作为用户补丁写回，来源升级为用户确认。真实视频里她们忘了伞，14:52 Jack 才发现。',
+  focus:['vlm','state','opp','output'],flows:['patch','delta','feedback'],ver:13,uv:'两人都听到了 Jack 的提醒',draft:'sent',bubble:true,
+  beliefs:[B('Sophie.activity','moving_to_exit'),B('Lily.activity','moving_to_exit'),B('umbrella_1.location','HELD_BY Sophie','user_confirmed')],changed:['umbrella_1.location'],goal:{p:.97,stage:2},rc:{label:'匆忙 · 安静',lvl:'low'},
+  opp:{key:'forget:umbrella',status:'resolved',src:'① 用户请求',who:'Sophie、Lily',problem:'出门没带伞会淋雨（L = 8）',deadline:'出门之前'},
+  msgs:[{type:'Feedback',layer:'out',route:'C14 → C5',body:{delivery_id:'dl_001',kind:'done',as_patch:{source:'user',ops:[{op:'confirm',key:'umbrella_1.location',value:{rel:'HELD_BY',ref:'Sophie'}}]}}}]},
+ {t:null,clock:'事后',mark:'结算',layer:'mem',dwell:5.6,title:'事后结算：本段 PG = 1.0',
+  desc:'标注把这里定为“必须说”，有效窗口 14:32–14:52，损失 8 分。系统在窗口内说中一次：+8 − 1（打扰）= +7，和完美助理一样。漏报则 PG = 0；之前若再误报一次，PG ≈ 0.64。',
+  focus:['log','eval'],flows:['state_log','gate_log','log_eval'],ver:13,uv:'两人都听到了 Jack 的提醒',evalOn:true,
+  beliefs:[B('Sophie.activity','moving_to_exit'),B('Lily.activity','moving_to_exit'),B('umbrella_1.location','HELD_BY Sophie','user_confirmed')],changed:[],goal:{p:1,stage:3},
+  opp:{key:'forget:umbrella',status:'resolved',src:'① 用户请求',who:'Sophie、Lily',problem:'出门没带伞会淋雨（L = 8）',deadline:'出门之前'},
+  msgs:[{type:'EvalScore',layer:'mem',route:'C17 → C18',body:{opportunity:'forget:umbrella',label:'must_fire',window:['14:32','14:52'],L:8,hit_at:'14:41',gain:8,c_int:-1,NPV:7,NPV_oracle:7,PG:1.0}}]}
+];
+const starts=[];{let acc=0;for(const p of phases){starts.push(acc);acc+=p.dwell}}
+const TOTAL=starts[starts.length-1]+phases[phases.length-1].dwell;
+
+/* ---------------- 组件说明 ---------------- */
+const MODS={
+ source:{role:'把视频变成带时间戳的帧流。同一套代码可以离线快跑、按 1× 回放，或接实时流。',
+  f:[['输入','视频文件 / 摄像头流'],['输出','帧 → C2；音频或字幕 → C3'],['实现','程序 · PyAV 解码，5 FPS 抽样'],['规则','每条信息都带可用时刻 t_avail，决策只能用此刻之前已经可用的信息'],['数据','<code>FrameRef{frame_id, pts_ms, t_avail_ms}</code>'],['代码','<code>pa/source/</code>']]},
+ gate:{role:'决定什么时候、把哪几帧送去看：不必每帧都看，也不能漏掉变化。',
+  f:[['输入','帧、话语结束信号、重点关注对象'],['输出','画面窗口（3 帧）→ C4'],['实现','程序 · 灰度帧差'],['规则','画面变化超过 0.08 且稳定后发；有人说完一句话立即发；平时 4 s 一次心跳，重点对象 1.5 s；两窗之间至少 0.8 s'],['数据','<code>WindowRequest{window_id, seq, frames, trigger}</code>'],['代码','<code>pa/gate/gate.py</code>']]},
+ speech:{role:'告诉系统谁在什么时候说了什么，并用声音、人脸锚点把画面里的人对上号。',
+  f:[['输入','音频 / M3-Bench 字幕（含说话人）'],['输出','话语 → C4、C15；话语结束 → C2'],['实现','当前用数据集字幕按设定时延模拟实时到达；ASR 可选；人脸提取复用 M3-Agent'],['数据','<code>Utterance{utt_id, speaker, text, start_ms, end_ms}</code>'],['代码','<code>pa/speech/</code>']]},
+ vlm:{role:'看画面，对照当前状态，只说哪里需要改，不写长篇描述。',
+  f:[['输入','3 帧 + 状态切片（含 CHECK 清单）+ 最近话语'],['输出','StatePatch → C5'],['实现','AI · DeepSeek deepseek-flash（关闭思考），4 路并行，P50 约 1.5 s'],['规则','CHECK 上的每一项必须回答 still / gone / set / unsure，这样“没看到”和“看到它不在”才分得开'],['数据','<code>ops: new · set · act · still · gone · unsure · said · link</code>'],['代码','<code>pa/perception/</code>']]},
+ state:{role:'维护“家里现在是什么样”。它是唯一能修改状态的组件，其他组件只能提补丁。',
+  f:[['输入','补丁：VLM、用户反馈、慢环'],['输出','StateDelta → C6–C9；状态切片 → C4；记录 → C17'],['实现','程序 · 排序 → 校验 → 归约，单个补丁 < 10 ms，可按日志重放'],['规则','位置不随时间过时，只在“看不见时有人碰过那片区域”或“看得清却不在”时失效；冲突时 用户确认 > 看到 > 听到 > 推断'],['数据','<code>Belief{key, value, source, status, last_seen, evidence}</code>'],['代码','<code>pa/state/</code>']]},
+ uv:{role:'推算每个人“以为”的世界。真实状态和某人以为的不一样，就是认知差。',
+  f:[['输入','StateDelta + 谁在场 + 话语'],['输出','每人一份信念视图 → C9'],['实现','程序规则'],['规则','在场且看得清算“看到”，有人告诉他算“听到”，否则停在他最后一次知道的值'],['数据','<code>view[person][key] = {value, via, t}</code>'],['代码','<code>pa/state/userview.py</code>（待建）']]},
+ goal:{role:'估计每个人在做什么、做到哪一步，取代单帧的“正在离开”标签。',
+  f:[['输入','动作、位置、activity、话语'],['输出','目标与阶段 → C9；截止风险 H → C10'],['实现','程序 · 小型 HMM / 贝叶斯滤波'],['规则','多条证据累积，单帧标签翻转只让概率小幅波动。实测漏报正是因为“正在离开”标签不稳定'],['数据','<code>{leave_home: 0.97, stage: 走向门口}</code>'],['代码','<code>pa/state/goals.py</code>（待建）']]},
+ rc:{role:'判断此刻打扰的代价高不高。',
+  f:[['输入','语音活动 + activity'],['输出','情境 → C10，用来查 C_int 和 q'],['实现','程序规则'],['规则','对方在说话或打电话时，提醒的打扰代价从 1 升到 2，询问从 1.5 升到 2.5'],['数据','<code>{state: 说话中 | 匆忙 | 空闲}</code>'],['代码','<code>pa/state/receptivity.py</code>（待建）']]},
+ opp:{role:'把值得注意的情况变成机会。这一步宁可多报，开不开口交给价值门控。',
+  f:[['输入','StateDelta、UserView、GoalFilter、慢环编译出的请求'],['输出','Opportunity → C10；重点关注 → C2'],['实现','程序 + 受约束的 LLM。现有来源 ① 用户请求、② 风险模板（代码里叫 Need）；③–⑥ 待建'],['规则','机会活跃期间，相关状态一变就重新估值，而不是只在条件成立的那一刻决策'],['数据','<code>Opportunity{key, source, addressee, problem, category, evidence, deadline}</code>'],['代码','<code>pa/agenda/</code> → <code>pa/opportunity/</code>']]},
+ val:{role:'为每个活跃机会算出 p、q、L、η、C、H，再算出每种说法的价值和等待的价值。',
+  f:[['输入','Opportunity + 状态快照 + 情境 + 历史'],['输出','ValueEstimate → C11'],['实现','AI 回答概率问题（DeepSeek，Jev 位置预留）+ 查表 <code>costs.yaml</code>'],['规则','模型只给概率，不直接决定说不说，这样概率才能单独校准。现在的版本还是让模型直接给 WAIT / ASK / REMIND'],['数据','<code>{p, q, L, η[m], C_int[m], C_FA[m], H, U[m], V_wait}</code>'],['代码','<code>pa/decision/</code> → <code>pa/value/estimator.py</code>']]},
+ vgate:{role:'执行唯一的决策规则：沉默、等待，还是开口；开口用哪种方式、对谁说。',
+  f:[['输入','ValueEstimate'],['输出','决定 → C12；决策日志 → C17'],['实现','程序 · 确定性，可复现'],['规则','开口 ⇔ U(m*) > max(0, V(等))。每一次结果都写日志，包括沉默和等待'],['数据','<code>{decision: SILENT | AMBIENT | ASK | REMIND, reason}</code>'],['代码','<code>pa/value/gate.py</code>（待建）']]},
+ draft:{role:'把决定写成一句短话，并标明每个说法有多确定。',
+  f:[['输入','机会 + 方式 + 状态快照；或用户提问（直达，不经价值门控）'],['输出','草稿 → C13'],['实现','AI · DeepSeek。机会变热时提前起草，600 ms 内拿不到就用模板'],['规则','只有亲眼看到或用户确认、且足够新的信念，才能用确定语气'],['数据','<code>ResponseDraft{text, claims[key, stated_as], evidence}</code>'],['代码','<code>pa/response/drafter.py</code>']]},
+ policy:{role:'发出前最后核对一次，并控制打扰总量。',
+  f:[['输入','草稿 + 当前状态'],['输出','投递 → C14，或拦截 / 降级为询问'],['实现','程序，不调模型'],['规则','已解决、证据过期、越权、距上次投递不到 30 s、同一件事已提醒 2 次，都会拦截。待建：累积打扰负担、按人去重、授权账本'],['数据','<code>checks{resolved, evidence, claims, cap, rate, count}</code>'],['代码','<code>pa/policy/gate.py</code>']]},
+ output:{role:'展示和播放消息，把用户反馈写回状态。',
+  f:[['输入','投递'],['输出','反馈补丁 → C5'],['实现','程序 · FastAPI + SSE 网页（<code>pa ui</code>）'],['规则','提醒发出不等于问题解决，要看到结果或用户确认才算'],['数据','<code>Feedback{done | not_needed | wrong}</code>'],['代码','<code>pa/ui/</code>']]},
+ consol:{role:'后台做两件事：把每句话里的请求编译成机会；每 30 秒把状态变化和对话整理成情节。',
+  f:[['输入','话语、日志'],['输出','请求 → C9；情节 → C16'],['实现','AI · DeepSeek，后台运行'],['规则','失败只丢摘要和请求编译，实时链路照常工作'],['数据','<code>Episode{span, t_avail, text}</code>'],['代码','<code>pa/slow/consolidator.py</code>']]},
+ ltm:{role:'回答“以前发生过什么”。',
+  f:[['输入','情节'],['输出','历史 → C10'],['实现','存储 · SQLite FTS5'],['规则','只返回决策时刻之前已经可用的情节'],['代码','<code>pa/memory/episodes.py</code>']]},
+ log:{role:'记录所有补丁、变化、决策和投递，任意时刻都能重放。',
+  f:[['输入','C5 的补丁与变化；C11 的每次决策'],['输出','回放、评测、校准'],['实现','存储 · <code>log.sqlite</code> + <code>ui_events.jsonl</code>'],['规则','待建的决策日志要记下每次估值的全部中间量和事后结果，这是以后校准和个性化的前提'],['数据','<code>DecisionRecord{estimate, propensity, feedback, outcome}</code>'],['代码','<code>pa/storage/</code>']]},
+ eval:{role:'在标注好的视频上运行系统，算出它实际创造的净价值。',
+  f:[['输入','日志 + 机会标注（窗口、损失、必须说 / 可不说 / 不该说）'],['输出','PG、NPV、FAH、及时命中率、提前量'],['实现','脚本 · <code>pa bench</code>（M3-Bench）'],['规则','说中 +L × 时效，每次开口 −C_int，说错再 −C_FA；PG = NPV ÷ 完美助理的 NPV'],['代码','<code>pa/bench/</code> → <code>pa/eval/opportunities.py</code>']]}
+};
+
+/* ---------------- 3D 渲染 ---------------- */
+let camera={yaw:.38,elev:.88,zoom:1};
+const initialCamera={...camera};
+let W=0,H=0,dpr=1,pt=0,playing=true,speed=1,stamp=0,lastPhase=-1,selected=null,hovered=null,activeTab='run';
+const reducedMotion=window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
+if(reducedMotion)playing=false;
+
+function clamp(x,a,b){return Math.max(a,Math.min(b,x))}
+function lerp(a,b,t){return a+(b-a)*t}
+function getPhase(t){let p=0;for(let i=0;i<starts.length;i++)if(t>=starts[i])p=i;return p}
+const fit={s:50,cx:0,cy:0,oy:0};
+function computeFit(){
+ const cy=Math.cos(initialCamera.yaw),sy=Math.sin(initialCamera.yaw),ce=Math.cos(initialCamera.elev),se=Math.sin(initialCamera.elev);
+ let x0=1e9,x1=-1e9,y0=1e9,y1=-1e9;
+ const add=(x,y,z)=>{const xx=x*cy-z*sy,yy=(x*sy+z*cy)*se-y*ce;x0=Math.min(x0,xx);x1=Math.max(x1,xx);y0=Math.min(y0,yy);y1=Math.max(y1,yy)};
+ for(const n of nodes){for(const a of[-1,1])for(const b of[-1,1])add(n.x+a*n.w/2,0,n.z+b*n.d/2);add(n.x,n.h+n.lab+.3,n.z)}
+ for(const z of zones)for(const [x,zz] of z.pts)add(x,0,zz);
+ const padX=24,padTop=64,padBot=58;
+ fit.s=Math.max(20,Math.min((W-padX*2)/(x1-x0),(H-padTop-padBot)/(y1-y0)));
+ fit.cx=(x0+x1)/2;fit.cy=(y0+y1)/2;fit.oy=padTop+(H-padTop-padBot)/2;
+}
+function currentScale(){return fit.s*camera.zoom}
+function uScale(){return clamp(currentScale()/58,.7,1.2)}
+function project(p){
+ const cy=Math.cos(camera.yaw),sy=Math.sin(camera.yaw),ce=Math.cos(camera.elev),se=Math.sin(camera.elev),s=currentScale();
+ const xx=p.x*cy-p.z*sy,zz=p.x*sy+p.z*cy;
+ return {x:W*.5+(xx-fit.cx)*s,y:fit.oy+(zz*se-p.y*ce-fit.cy)*s,depth:zz*ce+p.y*se};
+}
+let DASH=null;
+function polygon(points,fill,stroke='#d9e1ea',lw=1){ctx.beginPath();let a=project(points[0]);ctx.moveTo(a.x,a.y);for(let i=1;i<points.length;i++){const v=project(points[i]);ctx.lineTo(v.x,v.y)}ctx.closePath();if(fill){ctx.fillStyle=fill;ctx.fill()}if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=lw;if(DASH)ctx.setLineDash(DASH);ctx.stroke();if(DASH)ctx.setLineDash([])}}
+function lineScreen(a,b,color,width=1){ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.strokeStyle=color;ctx.lineWidth=width;ctx.stroke()}
+function line3d(points,color,width=1,dash=null){ctx.beginPath();for(let i=0;i<points.length;i++){let q=project(points[i]);if(i===0)ctx.moveTo(q.x,q.y);else ctx.lineTo(q.x,q.y)}ctx.strokeStyle=color;ctx.lineWidth=width;ctx.lineCap='round';ctx.lineJoin='round';if(dash)ctx.setLineDash(dash);ctx.stroke();if(dash)ctx.setLineDash([])}
+function ell(x,y,rx,ry,fill){ctx.beginPath();ctx.ellipse(x,y,Math.max(.01,rx),Math.max(.01,ry),0,0,Math.PI*2);ctx.fillStyle=fill;ctx.fill()}
+function hexToRgb(hex){if(hex.startsWith('rgb'))return hex.match(/[\d.]+/g).slice(0,3).map(Number);let s=hex.replace('#','');return [parseInt(s.slice(0,2),16),parseInt(s.slice(2,4),16),parseInt(s.slice(4,6),16)]}
+function blend(hex1,hex2,t){let a=hexToRgb(hex1),b=hexToRgb(hex2);return `rgb(${Math.round(lerp(a[0],b[0],t))},${Math.round(lerp(a[1],b[1],t))},${Math.round(lerp(a[2],b[2],t))})`}
+function rgba(hex,a){const c=hexToRgb(hex);return `rgba(${c[0]},${c[1]},${c[2]},${a})`}
+function roundRect(x,y,w,h,r,fill,stroke,lw=1,dash=null){ctx.beginPath();ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);ctx.quadraticCurveTo(x+w,y,x+w,y+r);ctx.lineTo(x+w,y+h-r);ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);ctx.lineTo(x+r,y+h);ctx.quadraticCurveTo(x,y+h,x,y+h-r);ctx.lineTo(x,y+r);ctx.quadraticCurveTo(x,y,x+r,y);ctx.closePath();if(fill){ctx.fillStyle=fill;ctx.fill()}if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=lw;if(dash)ctx.setLineDash(dash);ctx.stroke();if(dash)ctx.setLineDash([])}}
+function drawBox(cx,base,cz,w,h,d,opt={}){
+ const color=opt.color||'#E7EDF7',light=opt.light??.9,stroke=opt.stroke||'#ced9e5';
+ if(opt.shadow){let a=project(P(cx,base-.1,cz));ctx.save();ctx.filter='blur(13px)';ell(a.x+3,a.y+11,w*currentScale()*.53,d*currentScale()*.33,'rgba(67,83,108,.13)');ctx.restore()}
+ let x0=cx-w/2,x1=cx+w/2,y0=base,y1=base+h,z0=cz-d/2,z1=cz+d/2;
+ let c={a:P(x0,y0,z0),b:P(x1,y0,z0),c:P(x1,y0,z1),d:P(x0,y0,z1),A:P(x0,y1,z0),B:P(x1,y1,z0),C:P(x1,y1,z1),D:P(x0,y1,z1)};
+ polygon([c.b,c.c,c.C,c.B],blend(color,'#8495ad',.19*light),stroke,.65);
+ polygon([c.c,c.d,c.D,c.C],blend(color,'#94a7c1',.1*light),stroke,.75);
+ polygon([c.A,c.B,c.C,c.D],blend(color,'#ffffff',.68),stroke,1);
+ if(opt.glow){ctx.save();ctx.globalAlpha=opt.glow*.22;polygon([c.A,c.B,c.C,c.D],opt.glowColor||color,null);ctx.restore()}
+ return c;
+}
+function floatingDot(p,r,color,halo=0){const u=uScale();r*=u;let q=project(p);if(halo){ctx.save();ctx.globalAlpha=halo;let rg=ctx.createRadialGradient(q.x,q.y,0,q.x,q.y,r*3.7);rg.addColorStop(0,color);rg.addColorStop(1,'transparent');ctx.fillStyle=rg;ctx.fillRect(q.x-r*4,q.y-r*4,r*8,r*8);ctx.restore()}ell(q.x,q.y,r,r*.95,color);ell(q.x-r*.23,q.y-r*.23,r*.3,r*.3,'rgba(255,255,255,.74)')}
+function catmull(points,t){
+ let seg=Math.min(points.length-2,Math.floor(t*(points.length-1)));let f=t*(points.length-1)-seg;
+ let p0=points[Math.max(0,seg-1)],p1=points[seg],p2=points[seg+1],p3=points[Math.min(points.length-1,seg+2)];
+ const calc=k=>.5*((2*p1[k])+(-p0[k]+p2[k])*f+(2*p0[k]-5*p1[k]+4*p2[k]-p3[k])*f*f+(-p0[k]+3*p1[k]-3*p2[k]+p3[k])*f*f*f);
+ return P(calc('x'),calc('y'),calc('z'));
+}
+for(const c of curves){c.samples=[];for(let j=0;j<=56;j++)c.samples.push(catmull(c.pts,j/56))}
+function hull(pts){
+ pts=pts.slice().sort((a,b)=>a.x-b.x||a.y-b.y);
+ const cross=(o,a,b)=>(a.x-o.x)*(b.y-o.y)-(a.y-o.y)*(b.x-o.x),lo=[],up=[];
+ for(const p of pts){while(lo.length>=2&&cross(lo[lo.length-2],lo[lo.length-1],p)<=0)lo.pop();lo.push(p)}
+ for(let i=pts.length-1;i>=0;i--){const p=pts[i];while(up.length>=2&&cross(up[up.length-2],up[up.length-1],p)<=0)up.pop();up.push(p)}
+ up.pop();lo.pop();return lo.concat(up);
+}
+function inPoly(x,y,poly){let c=false;for(let i=0,j=poly.length-1;i<poly.length;j=i++){const a=poly[i],b=poly[j];if((a.y>y)!==(b.y>y)&&x<(b.x-a.x)*(y-a.y)/(b.y-a.y)+a.x)c=!c}return c}
+function lastVal(ph){for(let i=ph;i>=0;i--)if(phases[i].val)return phases[i].val;return null}
+
+function drawFloor(ph){
+ for(let x=-10.6;x<=12;x+=1.15)line3d([P(x,-.15,-5.8),P(x,-.15,4.4)],'rgba(215,225,236,.18)',.75);
+ for(let z=-5.8;z<=4.4;z+=1.2)line3d([P(-10.6,-.15,z),P(12,-.15,z)],'rgba(215,225,236,.18)',.75);
+ const act=new Set(phases[ph].focus.map(id=>byId[id].layer));
+ for(const zn of zones){
+  const col=LAYERS[zn.layer].color,on=act.has(zn.layer);
+  ctx.save();ctx.setLineDash([5,5]);polygon(zn.pts.map(([x,z])=>P(x,-.14,z)),rgba(col,on?.11:.05),rgba(col,on?.55:.3),on?1.2:1);ctx.restore();
+ }
+}
+function drawZoneLabels(ph){
+ const u=uScale(),act=new Set(phases[ph].focus.map(id=>byId[id].layer));
+ ctx.textBaseline='middle';ctx.textAlign='left';
+ for(const zn of zones){
+  const L=LAYERS[zn.layer],q=project(P(zn.lx,-.14,zn.lz)),on=act.has(zn.layer);
+  ctx.font=`720 ${11*u}px ${FONT}`;const w1=ctx.measureText(L.name).width;
+  ctx.font=`520 ${10*u}px ${FONT}`;const w2=ctx.measureText(L.sub).width;
+  const w=w1+w2+24*u,h=20*u;
+  roundRect(q.x,q.y-h/2,w,h,7*u,on?'rgba(255,255,255,.96)':'rgba(255,255,255,.8)',rgba(L.color,on?.8:.45),1);
+  ctx.fillStyle=blend(L.color,'#24364c',.45);ctx.font=`720 ${11*u}px ${FONT}`;ctx.fillText(L.name,q.x+8*u,q.y+.5);
+  ctx.fillStyle=on?'#7d8ea0':'#a3afbc';ctx.font=`520 ${10*u}px ${FONT}`;ctx.fillText(L.sub,q.x+16*u+w1,q.y+.5);
+ }
+}
+const isFlowOn=(ph,id)=>phases[ph].flows.includes(id);
+function drawFlows(t,ph){
+ for(const c of curves){
+  const on=isFlowOn(ph,c.id),steady=STEADY.has(c.id),col=LAYERS[c.layer].color;
+  if(!on&&c.bg){line3d(c.samples,'rgba(205,214,226,.55)',1,[3,5]);continue}
+  line3d(c.samples,'rgba(213,224,235,.45)',3.2);
+  line3d(c.samples,on?blend(col,'#e3ebf4',.12):steady?blend(col,'#e9eef4',.55):'#e3e8ee',on?1.8:1.05,c.dash?[4,4]:null);
+  if(!on&&!steady)continue;
+  const count=on?3:1,u0=uScale();
+  for(let k=0;k<count;k++){
+   const u=((t*c.rate*.2+k/count)%1+1)%1,pos=catmull(c.pts,u),q=project(pos),prev=project(catmull(c.pts,Math.max(.005,u-.025)));
+   ctx.save();ctx.globalAlpha=on?.14:.08;ell(q.x,q.y,8*u0,7*u0,col);ctx.restore();
+   lineScreen(prev,q,blend(col,'#fff',.15),3*u0);
+   const s=on?4.4*u0:3.4*u0;roundRect(q.x-s,q.y-s,s*2,s*2,2.6*u0,'#ffffff',col);roundRect(q.x-s*.62,q.y-s*.62,s*1.24,s*1.24,1.5*u0,col,null);
+  }
+ }
+}
+function drawFlowLabels(ph){
+ const u=uScale();ctx.font=`650 ${10*u}px ${FONT}`;ctx.textBaseline='middle';ctx.textAlign='center';
+ for(const c of curves){
+  if(!isFlowOn(ph,c.id))continue;
+  const col=LAYERS[c.layer].color,q=project(catmull(c.pts,c.lu??.5)),tw=ctx.measureText(c.msg).width,w=tw+14*u,h=17*u,oy=(c.lo??-11)*u;
+  ctx.save();ctx.shadowColor='rgba(53,72,98,.12)';ctx.shadowBlur=8;ctx.shadowOffsetY=2;
+  roundRect(q.x-w/2,q.y-h/2+oy,w,h,6*u,'rgba(255,255,255,.96)',rgba(col,.85));ctx.restore();
+  ctx.fillStyle=blend(col,'#2c3d52',.55);ctx.fillText(c.msg,q.x,q.y+oy);
+ }
+}
+
+const deco={
+ camera(n,t){
+  const b=n.h,u=uScale();
+  drawBox(n.x-.12,b+.01,n.z-.05,.76,.37,.56,{color:'#bcd0ed',stroke:'#b3c9e4'});
+  drawBox(n.x+.24,b+.14,n.z+.1,.24,.19,.15,{color:'#dae6f6',stroke:'#c4d5e8'});
+  const p=project(P(n.x-.18,b+.395,n.z-.02));
+  ell(p.x,p.y,13*u,9*u,'#547faa');ell(p.x,p.y,9*u,6.3*u,'#d4e6f6');ell(p.x,p.y,5.4*u,4*u,'#689dc7');ell(p.x-1.4*u,p.y-1.8*u,2.1*u,1.4*u,'#fff');
+  floatingDot(P(n.x+.54,b+.05,n.z-.62),2.4,'#E79584',.3);
+ },
+ gate(n,t,ph){
+  const fire=isFlowOn(ph,'gate_vlm')||isFlowOn(ph,'focus');
+  for(let i=0;i<4;i++){
+   const x=n.x-.42+i*.28,active=i===Math.floor(t*(isFlowOn(ph,'focus')?3:1.6))%4,h=.22+(active?.12:0)+.02*Math.sin(t*1.9-i*.8);
+   drawBox(x,n.h+.06,n.z-.04,.18,h,.86,{color:active?(fire?'#f2c489':'#a6c7ea'):'#d6e6f7',stroke:active?(fire?'#e7b675':'#a5bfdc'):'#c5d7eb'});
+  }
+ },
+ wave(n,t,ph,focus){
+  for(let i=0;i<7;i++){
+   const x=n.x-.48+i*.16,amp=focus?.2:.12,h=.06+amp*Math.abs(Math.sin(t*3.1+i*1.3))*(.6+.4*Math.sin(t*.7+i));
+   drawBox(x,n.h+.05,n.z,.09,h,.5,{color:focus?'#efc89e':'#f2dcc4',stroke:'#e4c19c'});
+  }
+ },
+ grid(n,t,ph,focus){
+  drawBox(n.x,n.h+.01,n.z,.89,.17,.91,{color:'#f0d9c0',stroke:'#e3c6a6'});
+  for(let i=0;i<3;i++)for(let j=0;j<3;j++){
+   const hi=Math.sin(t*(focus?5.2:2)+i*1.8+j*2.2)>(focus?.1:.6);
+   drawBox(n.x-.27+i*.265,n.h+.2,n.z-.27+j*.265,.17,.06,.17,{color:hi?'#e9b47c':'#f6ebde',stroke:'#e6d0b8'});
+  }
+ },
+ state(n,t,ph){
+  const s=phases[ph];
+  drawBox(n.x,n.h,n.z,1.87,.06,1.75,{color:'#e1e8f4',stroke:'#cfd9e8'});
+  const rows=[['Sophie','#9fb2df'],['Lily','#e2aaa1'],['umbrella_1','#95bdb9']];
+  const ents=new Set(s.beliefs.map(b=>b[0].split('.')[0])),ch=new Set(s.changed.map(k=>k.split('.')[0]));
+  const since=pt-starts[ph],glow=since<1.6?Math.abs(Math.sin(since*6)):0;
+  rows.forEach(([e,col],r)=>{
+   const exists=ents.has(e),act=ch.has(e)&&glow>.05;
+   for(let c=0;c<4;c++){
+    const xx=n.x-.65+c*.43,zz=n.z-.5+r*.5,hh=exists?.16+(c%3)*.045:.035,rise=act?glow*.12:0;
+    drawBox(xx,n.h+.06+rise,zz,.31,hh,.32,{color:act?'#F4CC87':exists?col:'#eef1f6',stroke:act?'#E9B772':exists?'#c7c3de':'#e1e6ee'});
+   }
+  });
+ },
+ uv(n,t,ph,focus){
+  const heard=!!phases[ph].uv,cols=['#9fb2df','#e2aaa1'];
+  drawBox(n.x,n.h,n.z,.9,.05,.72,{color:'#e6e3f5',stroke:'#d3cfea'});
+  for(let i=0;i<2;i++){const h=heard?.16+(focus?.04*Math.sin(t*4+i):0):.05;drawBox(n.x-.21+i*.42,n.h+.05,n.z,.3,h,.46,{color:heard?cols[i]:'#eef1f6',stroke:'#cfd3e6'})}
+ },
+ goal(n,t,ph,focus){
+  const g=phases[ph].goal,stage=g?g.stage:-1;
+  for(let i=0;i<4;i++){
+   const now=i===stage,past=i<stage,h=.06+i*.05+(now?.05+(focus?.03*Math.sin(t*5):0):0);
+   drawBox(n.x-.39+i*.26,n.h+.03,n.z,.18,h,.55,{color:now?'#f2c489':past?'#c9bfeb':'#eef1f6',stroke:now?'#e3ad6c':'#d6d9ea'});
+  }
+ },
+ rc(n,t,ph,focus){
+  const r=phases[ph].rc,u=uScale(),col=!r?'#cfd6e0':r.lvl==='high'?'#e0a86c':'#5fb39a';
+  drawBox(n.x,n.h+.01,n.z,.72,.08,.6,{color:'#e7ebf3',stroke:'#d3dae6'});
+  const c=project(P(n.x,n.h+.2,n.z));ctx.save();ctx.lineCap='round';ctx.lineWidth=3.4*u;
+  ctx.strokeStyle='#e3e8ef';ctx.beginPath();ctx.arc(c.x,c.y,12*u,Math.PI,2*Math.PI);ctx.stroke();
+  const frac=!r?0:r.lvl==='high'?.85:.3;ctx.strokeStyle=col;ctx.beginPath();ctx.arc(c.x,c.y,12*u,Math.PI,Math.PI*(1+frac));ctx.stroke();
+  ctx.fillStyle='#8a98a8';ctx.beginPath();ctx.arc(c.x,c.y,2.2*u,0,Math.PI*2);ctx.fill();ctx.restore();
+ },
+ opp(n,t,ph,focus){
+  const o=phases[ph].opp,col=!o?'#eef1f6':o.status==='resolved'?'#a6dcc7':'#f2c489';
+  for(let i=0;i<3;i++){const top=i===2;drawBox(n.x,n.h+.03+i*.09,n.z,.86-i*.07,.06,.74-i*.06,{color:top?col:(o?'#efe6da':'#eef1f6'),stroke:top&&o?(o.status==='resolved'?'#8fcbb3':'#e3ad6c'):'#dcd6cc'})}
+  if(o&&o.status==='active'&&focus)floatingDot(P(n.x+.42,n.h+.42,n.z-.3),2.6,'#e0a86c',.25);
+ },
+ val(n,t,ph){
+  const v=lastVal(ph),cur=!!phases[ph].val,vals=v?[v.p,v.q,v.H]:[0,0,0],cols=['#8fb4e3','#b1a6e0','#e6b07a'];
+  drawBox(n.x,n.h,n.z,1.02,.05,.82,{color:'#f1e6da',stroke:'#e2d2bf'});
+  vals.forEach((x,i)=>drawBox(n.x-.3+i*.3,n.h+.05,n.z,.18,.04+x*.46,.38,{color:cur?cols[i]:blend(cols[i],'#f4f6f9',.6),stroke:'#d9d3c8'}));
+ },
+ vgate(n,t,ph,focus){
+  const v=lastVal(ph),cur=!!phases[ph].val;
+  drawBox(n.x,n.h,n.z,.92,.05,.76,{color:'#e3eaf4',stroke:'#cfd9e6'});
+  if(!v)return;
+  const best=Math.max(...Object.values(v.U)),speak=v.dec==='REMIND';
+  const colU=best<=0?'#e9c3bd':speak?'#8fd0b8':'#f2c489';
+  drawBox(n.x-.2,n.h+.05,n.z,.24,.04+Math.max(0,best)*.2,.42,{color:cur?colU:blend(colU,'#f4f6f9',.5),stroke:'#cfd6e0'});
+  drawBox(n.x+.2,n.h+.05,n.z,.24,.04+v.vw*.2,.42,{color:cur?'#c4cfdd':'#e6ebf1',stroke:'#cfd6e0',light:.6});
+  if(cur&&focus)floatingDot(P(n.x,n.h+.62,n.z),2.8,speak?'#5fb39a':best>0?'#e0a86c':'#c9a29b',.28);
+ },
+ bars(n,t,ph){
+  const st=phases[ph].draft,active=st==='drafting';
+  for(let i=0;i<3;i++){
+   const h=.13+(active?.06*Math.sin(t*4+i*.8):0);
+   drawBox(n.x-.41+i*.4,n.h+.04,n.z-.04,.31,.25+h,.86,{color:active?'#f0c99c':st==='ready'?'#e9d8c4':st==='sent'?'#cfe7dc':'#efe5da',stroke:active?'#e2b47f':'#e2d2bf'});
+  }
+  if(st==='ready')floatingDot(P(n.x+.5,n.h+.5,n.z-.35),2.6,'#7fc1b1',.25);
+ },
+ pillars(n,t,ph){
+  const st=phases[ph].policy||'idle',col=st==='pass'?'#a6dcc7':'#d6e2f0';
+  drawBox(n.x-.3,n.h,n.z,.16,.38,.6,{color:'#dfe8f4',stroke:'#c9d6e6'});
+  drawBox(n.x+.3,n.h,n.z,.16,.38,.6,{color:'#dfe8f4',stroke:'#c9d6e6'});
+  drawBox(n.x,n.h+.38,n.z,.76,.07,.6,{color:col,stroke:'#cbd6e3'});
+  if(st==='pass')floatingDot(P(n.x,n.h+.62,n.z),2.6,'#5fb39a',.28);
+ },
+ output(n,t,ph){
+  const on=!!phases[ph].bubble,u=uScale();
+  drawBox(n.x,n.h+.04,n.z,.99,.2,.78,{color:on?'#b8decd':'#d3e8df',stroke:'#b3d3c4'});
+  for(let i=0;i<3;i++){const p=project(P(n.x-.31,n.h+.31,n.z-.2+i*.19));ctx.fillStyle=on?'#69aa94':'#aacabc';ctx.fillRect(p.x-13*u,p.y,(26-i*3)*u,2.5*u)}
+ },
+ stack(n,t,ph,focus){
+  for(let i=0;i<3;i++)drawBox(n.x,n.h+.02+i*.11,n.z,.9-i*.08,.07,.7-i*.06,{color:focus&&i===2?'#d5caf5':'#e6e1f7',stroke:'#d2cbec'});
+ },
+ ring(n,t,ph,focus){
+  drawBox(n.x,n.h+.01,n.z,.8,.12,.66,{color:'#f0dcc6',stroke:'#e3c6a6'});
+  const c=project(P(n.x,n.h+.3,n.z)),u=uScale();
+  ctx.save();ctx.strokeStyle=focus?'rgba(214,150,86,.8)':'rgba(190,160,130,.45)';ctx.lineWidth=2*u;
+  ctx.beginPath();ctx.ellipse(c.x,c.y,15*u,7*u,0,0,Math.PI*2);ctx.stroke();
+  const a=t*(focus?2.4:.6);ctx.beginPath();ctx.ellipse(c.x,c.y,15*u,7*u,0,a,a+1.6);ctx.strokeStyle=focus?'#d18d47':'#c4a888';ctx.lineWidth=3*u;ctx.stroke();ctx.restore();
+ },
+ evalbars(n,t,ph){
+  const on=!!phases[ph].evalOn;
+  drawBox(n.x,n.h,n.z,.95,.05,.7,{color:'#e6e9f0',stroke:'#d3d9e3'});
+  [.14,.24,.36].forEach((h,i)=>drawBox(n.x-.28+i*.28,n.h+.05,n.z,.18,on?.06+h:.05,.36,{color:on?['#c9d3e0','#b9cde6','#8fd0b8'][i]:'#eef1f6',stroke:'#d3d9e3'}));
+ }
+};
+
+function nodeAlpha(n,ph){return (phases[ph].focus.includes(n.id)||selected===n.id||hovered===n.id)?1:.5}
+function drawNode(n,t,ph){
+ const k=KIND[n.kind],focus=phases[ph].focus.includes(n.id),sel=selected===n.id,hov=hovered===n.id;
+ ctx.save();ctx.globalAlpha=nodeAlpha(n,ph);
+ if(sel||hov){
+  const m=.22,y=-.13,pts=[P(n.x-n.w/2-m,y,n.z-n.d/2-m),P(n.x+n.w/2+m,y,n.z-n.d/2-m),P(n.x+n.w/2+m,y,n.z+n.d/2+m),P(n.x-n.w/2-m,y,n.z+n.d/2+m)];
+  polygon(pts,rgba(k.accent,sel?.16:.08),rgba(k.accent,sel?.85:.5),sel?1.6:1);
+ }
+ const pulse=focus?.55+.45*Math.sin(t*4.2):0,isNew=n.st==='new';
+ if(isNew)DASH=[4,3];
+ const c=drawBox(n.x,0,n.z,n.w,n.h,n.d,{color:isNew?blend(k.base,'#ffffff',.45):k.base,stroke:isNew?rgba(k.accent,.9):k.stroke,shadow:!isNew,glow:focus?.6+.35*pulse:0,glowColor:k.accent});
+ DASH=null;
+ deco[n.deco](n,t,ph,focus);
+ if(focus){ctx.globalAlpha=.35+.35*pulse;polygon([c.A,c.B,c.C,c.D],null,k.accent,1.6)}
+ ctx.restore();
+ const top=n.h+.42,pick=[c.a,c.b,c.c,c.d,P(c.a.x,top,c.a.z),P(c.b.x,top,c.b.z),P(c.c.x,top,c.c.z),P(c.d.x,top,c.d.z)].map(project);
+ n.hull=hull(pick);
+}
+function drawNodeLabel(n,ph){
+ const k=KIND[n.kind],u=uScale(),focus=phases[ph].focus.includes(n.id);
+ const p=project(P(n.x,n.h+n.lab,n.z)),chip=`${n.code} · ${k.label}`,stl=n.st==='built'?null:ST_LABEL[n.st];
+ ctx.font=`700 ${9*u}px ${FONT}`;const cw=ctx.measureText(chip).width+10*u,sw=stl?ctx.measureText(stl).width+9*u:0;
+ ctx.font=`${focus?720:650} ${12*u}px ${FONT}`;const tw=ctx.measureText(n.title).width;
+ const total=cw+5*u+tw+(stl?5*u+sw:0),x0=p.x-total/2,y=p.y;
+ ctx.save();ctx.globalAlpha=nodeAlpha(n,ph)===1?1:.62;
+ roundRect(x0-4*u,y-11*u,total+8*u,22*u,8*u,'rgba(255,255,255,.72)',null);
+ roundRect(x0,y-8*u,cw,16*u,5*u,k.chipBg,null);
+ ctx.font=`700 ${9*u}px ${FONT}`;ctx.fillStyle=k.chipInk;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(chip,x0+cw/2,y+.5);
+ ctx.font=`${focus?720:650} ${12*u}px ${FONT}`;ctx.fillStyle=focus?'#22344a':'#4f6278';ctx.textAlign='left';ctx.fillText(n.title,x0+cw+5*u,y+.5);
+ if(stl){const sx=x0+cw+5*u+tw+5*u,part=n.st==='partial';
+  roundRect(sx,y-7.5*u,sw,15*u,4.5*u,part?'#fdf6ed':'#ffffff',part?'#e3cfb5':'#b9c4d1',1,part?null:[3,2]);
+  ctx.font=`650 ${9*u}px ${FONT}`;ctx.fillStyle=part?'#a07444':'#7c8b9b';ctx.textAlign='center';ctx.fillText(stl,sx+sw/2,y+.5)}
+ ctx.restore();
+ n.labelRect={x:x0-4,y:y-11*u,w:total+8,h:22*u};
+}
+function drawBubble(ph){
+ if(!phases[ph].bubble)return;
+ const n=byId.output,u=uScale(),p=project(P(n.x,0,n.z+n.d/2+.15)),text='外面可能下雨，伞还在架子上，记得带上。';
+ ctx.font=`600 ${11.5*u}px ${FONT}`;const w=ctx.measureText(text).width+26*u,h=34*u,x0=clamp(p.x-w*.7,8,W-w-10),y0=Math.min(p.y+12*u,H-h-60);
+ ctx.save();ctx.shadowColor='rgba(53,89,72,.14)';ctx.shadowBlur=18;ctx.shadowOffsetY=6;
+ roundRect(x0,y0,w,h,12*u,'#ffffff','#cfe5d9');ctx.restore();
+ ctx.fillStyle='#4f8a76';ctx.textAlign='left';ctx.textBaseline='middle';ctx.fillText(text,x0+13*u,y0+h/2);
+}
+let drawOrder=[];
+function drawScene(){
+ if(!W||!H)return;
+ ctx.clearRect(0,0,W,H);
+ const ph=getPhase(pt),t=playing?performance.now()/1000:pt;
+ drawFloor(ph);
+ drawFlows(t,ph);
+ drawOrder=nodes.map(n=>({n,depth:project(P(n.x,0,n.z)).depth})).sort((a,b)=>a.depth-b.depth).map(o=>o.n);
+ for(const n of drawOrder)drawNode(n,t,ph);
+ drawZoneLabels(ph);
+ for(const n of drawOrder)drawNodeLabel(n,ph);
+ drawFlowLabels(ph);
+ drawBubble(ph);
+}
+
+/* ---------------- 面板 ---------------- */
+function compact(o){
+ if(o===null||typeof o!=='object')return JSON.stringify(o);
+ if(Array.isArray(o))return '['+o.map(compact).join(', ')+']';
+ return '{'+Object.entries(o).map(([k,v])=>JSON.stringify(k)+': '+compact(v)).join(', ')+'}';
+}
+function fmt(o,ind=''){
+ const s=compact(o);
+ if(s.length<=50||ind.length>=4||o===null||typeof o!=='object')return s;
+ if(Array.isArray(o))return '[\n'+o.map(v=>ind+'  '+fmt(v,ind+'  ')).join(',\n')+'\n'+ind+']';
+ return '{\n'+Object.entries(o).map(([k,v])=>ind+'  '+JSON.stringify(k)+': '+fmt(v,ind+'  ')).join(',\n')+'\n'+ind+'}';
+}
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+function hl(json){
+ return esc(json).replace(/("(?:[^"\\]|\\.)*")(\s*:)?|\b(true|false|null)\b|-?\b\d+(?:\.\d+)?\b/g,(m,str,colon)=>{
+  if(str)return colon?`<span class="j-k">${str}</span>${colon}`:`<span class="j-s">${str}</span>`;
+  return `<span class="j-n">${m}</span>`;
+ });
+}
+const sgn=x=>(x>0?'+':x<0?'−':'')+Math.abs(x).toFixed(2);
+function clockOf(ph,frac){
+ const a=phases[ph],b=phases[ph+1];
+ if(a.t===null)return '事后';
+ const s=810+(b&&b.t!==null?lerp(a.t,b.t,frac):a.t);
+ const m=Math.floor(s/60),ss=s-m*60;return String(m).padStart(2,'0')+':'+ss.toFixed(1).padStart(4,'0');
+}
+function chartSVG(v){
+ const rows=[['提醒','remind'],['询问','ask'],['提示音','ambient']],L=50,R=344,min=-3,max=3,X=u=>L+(clamp(u,min,max)-min)/(max-min)*(R-L),top=20,rh=25;
+ const best=Object.entries(v.U).sort((a,b)=>b[1]-a[1])[0][0],speak=v.dec==='REMIND';
+ let s=`<svg class="vchart" viewBox="0 0 352 ${top+rh*3+12}" role="img" aria-label="三种说法的开口价值与等待价值">`;
+ for(const g of[-2,-1,1,2])s+=`<line x1="${X(g)}" x2="${X(g)}" y1="${top-4}" y2="${top+rh*3-4}" stroke="#f0f2f6"/>`;
+ s+=`<rect x="${X(min)}" y="${top-4}" width="${X(0)-X(min)}" height="${rh*3}" fill="#fdf4f2" opacity=".55"/>`;
+ rows.forEach(([name,k],i)=>{
+  const u=v.U[k],y=top+i*rh,x0=Math.min(X(0),X(u)),w=Math.max(2,Math.abs(X(u)-X(0))),isBest=k===best;
+  const fill=isBest?(speak?'#5fb39a':u>0?'#e6b07a':'#d9a59c'):(u<0?'#ecc6bf':'#c3d4ea');
+  s+=`<text x="0" y="${y+8}" font-size="11" fill="${isBest?'#22344a':'#7d8ea0'}" font-weight="${isBest?700:500}" dominant-baseline="middle">${name}</text>`;
+  s+=`<rect x="${x0}" y="${y+1}" width="${w}" height="14" rx="4" fill="${fill}"/>`;
+  s+=`<text x="${u>=0?X(0)-5:X(0)+5}" y="${y+8}" font-size="10.5" fill="#5d6f84" text-anchor="${u>=0?'end':'start'}" dominant-baseline="middle" font-family="JetBrains Mono,Consolas,monospace">${sgn(u)}</text>`;
+ });
+ s+=`<line x1="${X(0)}" x2="${X(0)}" y1="${top-6}" y2="${top+rh*3-2}" stroke="#8d9aa8" stroke-width="1.2"/>`;
+ s+=`<line x1="${X(v.vw)}" x2="${X(v.vw)}" y1="${top-8}" y2="${top+rh*3-2}" stroke="#d99b55" stroke-width="1.6" stroke-dasharray="4 3"/>`;
+ s+=`<text x="${X(v.vw)}" y="${top-12}" font-size="10" fill="#a2683a" text-anchor="middle" font-weight="650">等待 ${v.vw.toFixed(1)}</text>`;
+ s+=`<text x="${X(0)}" y="${top+rh*3+8}" font-size="9.5" fill="#a0acb9" text-anchor="middle">0</text><text x="${X(min)+2}" y="${top+rh*3+8}" font-size="9.5" fill="#cfa59d">不值得</text><text x="${R}" y="${top+rh*3+8}" font-size="9.5" fill="#a0acb9" text-anchor="end">值得</text>`;
+ return s+'</svg>';
+}
+function renderVal(ph){
+ const s=phases[ph],box=$('valCard');let v=s.val,from=null;
+ if(!v)for(let i=ph-1;i>=0;i--)if(phases[i].val){v=phases[i].val;from=phases[i];break}
+ if(!v){box.className='card';box.innerHTML=`<div class="card-head"><span>价值门控</span><span class="aux">C10 → C11</span></div><div class="card-empty">${s.opp?'机会刚出现，下一步估值。':'还没有机会，决策层不计算。'}</div>`;return}
+ const cur=!!s.val,d=DEC[v.dec];
+ box.className='card '+(cur?'live':'dim');
+ box.innerHTML=`<div class="card-head"><span>价值门控</span><span class="aux">${cur?'本阶段重新估值':`沿用 ${from.clock} 的估值`}</span></div>
+  <div class="stat3"><div><b>${v.p.toFixed(2)}</b><span><i>p</i>这事是真的</span></div><div><b>${v.q.toFixed(2)}</b><span><i>q</i>她们自己会处理</span></div><div><b>${v.H.toFixed(2)}</b><span><i>H</i>截止风险</span></div></div>
+  ${chartSVG(v)}
+  <div class="verdict"><span class="dec-badge ${d.cls}">${d.label}</span><span>${esc(v.why)}</span></div>`;
+}
+function renderRunPanel(ph){
+ const s=phases[ph];
+ $('phaseTitle').textContent=s.title;
+ $('phaseTitle').style.color=s.layer==='dec'?'#8f6338':s.layer==='out'?'#3f7f6c':'#24364c';
+ $('phaseDesc').textContent=s.desc;
+ $('ver').textContent=s.ver;
+ renderVal(ph);
+ const ch=new Set(s.changed);
+ $('beliefs').innerHTML=s.beliefs.length?s.beliefs.map(([k,v,src,st])=>`<tr class="${ch.has(k)?'changed':''}"><td class="key">${esc(k)}</td><td>${esc(v)}</td><td><span class="tag t-${src}">${esc(SRC_LABEL[src]||src)}</span></td><td><span class="tag t-${st}">${st==='holds'?'成立':esc(st)}</span></td></tr>`).join(''):'<tr class="empty"><td colspan="4">尚无信念，等待第一个补丁</td></tr>';
+ const g=s.goal,r=s.rc;
+ $('derived').innerHTML=`<div class="dv ${g?'on':''}"><span>C7 在做什么</span><b>${g?`出门 ${g.p.toFixed(2)} · ${STAGES[g.stage]}`:'—'}</b></div>
+  <div class="dv ${r?'on':''}"><span>C8 方不方便</span><b>${r?esc(r.label):'—'}</b></div>
+  <div class="dv ${s.uv?'on':''}"><span>C6 她们知道什么</span><b>${s.uv?esc(s.uv):'—'}</b></div>`;
+ const o=s.opp;
+ $('oppBox').innerHTML=o?`<div class="opp ${o.status}"><div class="opp-top"><code>${esc(o.key)}</code><span class="pill ${o.status}">${o.status==='active'?'活跃':'已解决'}</span></div>
+  <div class="opp-grid"><span>来源</span><b>${esc(o.src)}</b><span>对象</span><b>${esc(o.who)}</b><span>问题</span><b>${esc(o.problem)}</b><span>期限</span><b>${esc(o.deadline)}</b></div></div>`:'<div class="need-none">暂无机会</div>';
+ $('msgCount').textContent=s.msgs.length>1?`${s.msgs.length} 条`:'';
+ $('msgs').innerHTML=s.msgs.map(m=>`<div class="msg-block"><div class="msg-top"><span class="msg-type"><i style="background:${LAYERS[m.layer].color}"></i>${esc(m.type)}</span><span class="msg-route">${esc(m.route)}</span></div><pre class="msg">${hl(fmt(m.body))}</pre></div>`).join('');
+ if(activeTab==='mod')renderModPanel();
+}
+function linkButton(c,dir){
+ const other=byId[dir==='in'?c.from:c.to];
+ return `<button data-goto="${other.id}"><i style="background:${LAYERS[c.layer].color}"></i>${dir==='in'?'←':'→'} ${other.code} ${esc(other.title)}<em>${esc(c.msg)}</em></button>`;
+}
+function stPill(st){return st==='built'?'':`<span class="spill ${st==='partial'?'partial':''}">${ST_LABEL[st]}</span>`}
+function renderModPanel(){
+ const box=$('tab-mod');
+ if(!selected||!byId[selected]){
+  box.innerHTML=LAYER_ORDER.map(L=>`<div class="mod-index-group"><div class="mod-index-title"><i style="background:${LAYERS[L].color}"></i>${LAYERS[L].name}<span>${LAYERS[L].sub}</span></div>`+
+   nodes.filter(n=>n.layer===L).map(n=>`<button class="mod-link" data-goto="${n.id}"><span class="kchip k-${n.kind}">${n.code} · ${KIND[n.kind].label}</span><span class="grow">${esc(n.title)}</span>${stPill(n.st)}</button>`).join('')+'</div>').join('');
+  return;
+ }
+ const n=byId[selected],m=MODS[n.id],ph=getPhase(pt),s=phases[ph];
+ const ins=curves.filter(c=>c.to===n.id),outs=curves.filter(c=>c.from===n.id);
+ const live=s.focus.includes(n.id),liveFlows=curves.filter(c=>s.flows.includes(c.id)&&(c.from===n.id||c.to===n.id)).map(c=>c.msg);
+ box.innerHTML=`<div class="mod-chips"><span class="kchip k-${n.kind}">${n.code} · ${KIND[n.kind].label}</span><span class="chip">${LAYERS[n.layer].name}</span>${stPill(n.st)}<button class="back-btn" data-goto="">← 组件索引</button></div>
+  <div class="mod-name">${esc(n.title)}</div><p class="mod-role">${esc(m.role)}</p>
+  <dl class="fields">${m.f.map(([a,b])=>`<div><dt>${esc(a)}</dt><dd>${b}</dd></div>`).join('')}</dl>
+  <div class="sec"><div class="sec-head"><span>上游 / 下游</span><span class="aux">点击跳转</span></div><div class="io">${ins.map(c=>linkButton(c,'in')).join('')}${outs.map(c=>linkButton(c,'out')).join('')}</div></div>
+  <div class="mod-now" ${live?'':'hidden'}>在「${esc(s.title)}」中活跃${liveFlows.length?'，传递 '+esc(liveFlows.join('、')):''}</div>`;
+}
+
+/* ---------------- 主动性定义页 ---------------- */
+function waterfallSVG(){
+ const items=[['避免的损失','p(1−q)ηL',0,3.55,'#7fc1b1'],['说错的代价','(1−p)C_FA',3.55,2.92,'#e3a99f'],['打扰的代价','C_int',2.92,1.92,'#e3a99f'],['开口价值 U','',0,1.92,'#e6b07a']];
+ const Wd=360,top=22,base=128,sc=(base-top)/4,Y=v=>base-v*sc,cw=60,gap=(Wd-4*cw)/4;
+ let s=`<svg class="dsvg" viewBox="0 0 ${Wd} 176" role="img" aria-label="14:40 提醒的价值分解">`;
+ s+=`<line x1="0" x2="${Wd}" y1="${base}" y2="${base}" stroke="#d9dfe7"/>`;
+ s+=`<line x1="0" x2="${Wd}" y1="${Y(.3)}" y2="${Y(.3)}" stroke="#d99b55" stroke-dasharray="4 3"/><line x1="${Wd-128}" x2="${Wd-112}" y1="8" y2="8" stroke="#d99b55" stroke-dasharray="4 3" stroke-width="1.4"/><text x="${Wd}" y="11" font-size="10" fill="#a2683a" text-anchor="end">等待价值 V(等) = 0.3</text>`;
+ items.forEach(([name,f,a,b,col],i)=>{
+  const x=gap/2+i*(cw+gap),y=Y(Math.max(a,b)),h=Math.abs(Y(a)-Y(b)),d=b-a,last=i===3;
+  s+=`<rect x="${x}" y="${y}" width="${cw}" height="${h}" rx="4" fill="${col}"/>`;
+  if(i<3)s+=`<line x1="${x+cw}" x2="${x+cw+gap}" y1="${Y(b)}" y2="${Y(b)}" stroke="#c4ccd6" stroke-dasharray="2 2"/>`;
+  s+=`<text x="${x+cw/2}" y="${y-6}" font-size="11.5" font-weight="700" text-anchor="middle" fill="${last?'#8f6338':'#34485f'}" font-family="JetBrains Mono,Consolas,monospace">${last?'1.92':(d>0?'+':'−')+Math.abs(d).toFixed(2)}</text>`;
+  s+=`<text x="${x+cw/2}" y="${base+16}" font-size="10.5" text-anchor="middle" fill="#4f6276" font-weight="${last?700:560}">${name}</text>`;
+  if(f)s+=`<text x="${x+cw/2}" y="${base+31}" font-size="9.5" text-anchor="middle" fill="#a0acb9" font-family="JetBrains Mono,Consolas,monospace">${f}</text>`;
+ });
+ return s+`<text x="${gap/2+3*(cw+gap)+cw/2}" y="${base+31}" font-size="9.5" text-anchor="middle" fill="#3d8a72" font-weight="650">&gt; 0.3 → 开口</text></svg>`;
+}
+function ladderSVG(){
+ const steps=[['沉默','只记录',1],['环境提示','提示音、灯',0],['延后','等空下来',0],['询问','“带伞了吗？”',1],['提醒','“记得带伞”',1],['直接行动','关燃气',0]];
+ const Wd=360,cw=54,gap=(Wd-6*cw)/5,base=104;
+ let s=`<svg class="dsvg" viewBox="0 0 ${Wd} 150" role="img" aria-label="介入方式阶梯">`;
+ s+=`<defs><linearGradient id="lg" x1="0" x2="1"><stop offset="0" stop-color="#7fc1b1"/><stop offset="1" stop-color="#d98a7e"/></linearGradient></defs>`;
+ s+=`<text x="0" y="10" font-size="9.5" fill="#a0acb9">打扰更低</text><text x="${Wd}" y="10" font-size="9.5" fill="#a0acb9" text-anchor="end">需要更多把握与授权</text>`;
+ s+=`<rect x="0" y="15" width="${Wd}" height="3" rx="1.5" fill="url(#lg)" opacity=".55"/>`;
+ steps.forEach(([name,ex,done],i)=>{
+  const x=i*(cw+gap),h=14+i*13,y=base-h,col=['#cfd8e3','#b9d9cf','#e9d6b8','#e9c79f','#e2b07d','#dfa196'][i];
+  s+=`<rect x="${x}" y="${y}" width="${cw}" height="${h}" rx="5" fill="${done?col:'#fff'}" stroke="${done?'none':'#b9c4d1'}" stroke-dasharray="${done?'':'3 2'}"/>`;
+  s+=`<text x="${x+cw/2}" y="${base+15}" font-size="11" font-weight="680" text-anchor="middle" fill="#34485f">${name}</text>`;
+  s+=`<text x="${x+cw/2}" y="${base+30}" font-size="9.5" text-anchor="middle" fill="#8e9cab">${ex}</text>`;
+  if(done)s+=`<text x="${x+cw/2}" y="${y-5}" font-size="9" text-anchor="middle" fill="#8e9cab" font-weight="700" font-family="JetBrains Mono,Consolas,monospace">${['WAIT','','','ASK','REMIND',''][i]}</text>`;
+ });
+ return s+'</svg>';
+}
+function pgSVG(){
+ const Wd=360,L=14,R=Wd-14,min=-.5,max=1.15,X=v=>L+(v-min)/(max-min)*(R-L),y=40;
+ let s=`<svg class="dsvg" viewBox="0 0 ${Wd} 92" role="img" aria-label="主动增益 PG 的刻度">`;
+ s+=`<defs><linearGradient id="pg" x1="0" x2="1"><stop offset="0" stop-color="#eef1f5"/><stop offset="1" stop-color="#bfe3d5"/></linearGradient></defs>`;
+ s+=`<rect x="${X(min)}" y="${y}" width="${X(0)-X(min)}" height="10" rx="5" fill="#f4d5cf"/><rect x="${X(0)}" y="${y}" width="${X(1)-X(0)}" height="10" fill="url(#pg)"/>`;
+ s+=`<text x="${(X(min)+X(0))/2}" y="${y-10}" font-size="10" fill="#c27d72" text-anchor="middle" font-weight="650">&lt; 0 添乱</text>`;
+ for(const [v,l] of[[0,'0 从不说话'],[1,'1 完美助理']]){s+=`<line x1="${X(v)}" x2="${X(v)}" y1="${y-3}" y2="${y+13}" stroke="#7d8ea0"/><text x="${X(v)}" y="${y+26}" font-size="10" fill="#4f6276" text-anchor="middle" font-weight="650">${l}</text>`}
+ for(const [v,l,c] of[[.64,'多一次误报 0.64','#a2683a'],[1,'本段 1.0','#2f7d66']]){s+=`<circle cx="${X(v)}" cy="${y+5}" r="5" fill="#fff" stroke="${c}" stroke-width="2"/><text x="${X(v)}" y="${y-10}" font-size="10" fill="${c}" text-anchor="middle" font-weight="650">${l}</text>`}
+ return s+`<text x="${Wd/2}" y="${y+46}" font-size="10" fill="#8e9cab" text-anchor="middle">PG = 系统的净价值 ÷ 完美助理的净价值</text></svg>`;
+}
+function renderDef(){
+ const CRIT=[['回答“伞在哪”','xnnn','被动应答','no'],['每天 8 点播天气','yxxx','定时任务','no'],['条件一成立就提醒','yyyx','规则触发','weak'],['八点、看他空闲时提醒吃药','yyyy','L1 主动','good'],['告诉她钥匙被挪进了抽屉','yyyy','L3 主动','good']];
+ const CELL={y:'<td class="y">✓</td>',x:'<td class="n">✕</td>',n:'<td class="na">–</td>'};
+ const mx=`<table class="mx"><thead><tr><th>例子</th><th>①</th><th>②</th><th>③</th><th>④</th><th>结论</th></tr></thead><tbody>`+
+  CRIT.map(([ex,f,res,cls])=>`<tr><td>${ex}</td>${[...f].map(c=>CELL[c]).join('')}<td class="${cls}">${res}</td></tr>`).join('')+'</tbody></table>';
+ const SRCS=[['①','用户请求','“别忘了带伞”',1],['②','风险模板','忘带物品、电器没关',1],['③','认知差','钥匙被挪，主人不知道',0],['④','预期违背','平时出门关灯，今天没关',0],['⑤','目标推断','要出门 → 需要伞和钥匙',0],['⑥','风险预测','锅里的水快烧干',0]];
+ $('tab-def').innerHTML=`
+ <div class="def-hero">主动 = <em>未被要求</em>时，系统根据对<em>状态</em>的理解，判断<em>此刻</em>以<em>某种方式</em>开口<em>比继续沉默更有价值</em>，从而发起的介入。</div>
+ <div class="def-sec"><div class="def-q">算不算主动<span>四条必须同时满足</span></div>${mx}
+  <div class="mx-legend">① 此刻没人提问或下令　② 由状态引起，能指出证据　③ 说得清对谁、什么问题、最晚何时　④ 比较过说、不说、再等等</div></div>
+ <div class="def-sec"><div class="def-q">值不值得说<span>单次决策 · 以 14:40 为例</span></div>
+  <div class="formula">U(m) = p(1−q)·η·L − (1−p)·C_FA − C_int<br>开口 ⇔ U(m*) &gt; max(0, V(等))<small>V(等) = (1−H) × 等一会儿之后最好的开口价值。1 分 = 被一句短语音打扰一次。</small></div>
+  <div class="q6"><span><i>p</i>这事是真的吗</span><span><i>q</i>他自己会处理吗</span><span><i>L</i>不管会多糟</span><span><i>η</i>说了有用吗</span><span><i>C</i>打扰与说错的代价</span><span><i>H</i>还能等吗</span></div>
+  ${waterfallSVG()}
+  <p class="def-note">同一件事在 14:01 价值为 −2.7（沉默），14:32 低于等待价值（再等等），14:40 才值得开口。说早了是打扰，说晚了没用。</p></div>
+ <div class="def-sec"><div class="def-q">怎么说<span>每种方式各算一次 U，取最大</span></div>${ladderSVG()}
+  <p class="def-note">实色是已实现的三种：等待、询问、提醒；虚线是待建的。用户直接提问走快速通道，不经过这套计算。</p></div>
+ <div class="def-sec"><div class="def-q">机会从哪来<span>发现宁可多报，开口交给价值</span></div>
+  <div class="src-grid">${SRCS.map(([n,t,e,done])=>`<div class="src ${done?'':'todo'}"><em>${done?'已有':'待建'}</em><b>${n} ${t}</b><span>${e}</span></div>`).join('')}</div>
+  <div class="lv"><div><b>L0 被动应答</b>用户当场问</div><div class="now"><b>L1 时机主动</b>用户事先说过</div><div class="now"><b>L2 模板主动</b>工程师登记过</div><div class="goal"><b>L3 开放主动</b>系统自己发现</div></div>
+  <div class="lv-cap"><span>保留，不算主动</span><span>现在</span><span>现在</span><span>目标</span></div></div>
+ <div class="def-sec"><div class="def-q">主动得好不好<span>在标注视频上事后结算</span></div>${pgSVG()}
+  <p class="def-note">说中 +L × 时效，每次开口 −C_int，说错再 −C_FA。PG 要和每小时误报 FAH、平均提前量一起看：只看命中，系统会学会什么都说；只看误报，它会学会什么都不说。</p></div>`;
+}
+
+/* ---------------- 交互 ---------------- */
+function setTab(tab){
+ activeTab=tab;
+ document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab));
+ for(const k of['run','mod','def'])$('tab-'+k).classList.toggle('hidden',tab!==k);
+ if(tab==='mod')renderModPanel();
+}
+function select(id){selected=id&&byId[id]?id:null;setTab('mod');drawScene()}
+document.querySelectorAll('.tab-btn').forEach(b=>b.addEventListener('click',()=>setTab(b.dataset.tab)));
+$('tab-mod').addEventListener('click',e=>{const b=e.target.closest('[data-goto]');if(b)select(b.dataset.goto)});
+$('layerLegend').innerHTML=LAYER_ORDER.map(L=>`<span class="legend-item"><i class="legend-dot" style="background:${LAYERS[L].color}"></i>${LAYERS[L].name}</span>`).join('');
+
+const tl=$('tl'),N=phases.length,posPct=i=>(i/(N-1)*100);
+function buildTimeline(){
+ let html='<div class="tl-axis"></div><div class="tl-fill" id="tlFill"></div>';
+ phases.forEach((s,i)=>{
+  const col=LAYERS[s.layer].color,cls=s.val?'val':'';
+  html+=`<div class="tl-mark ${cls}" data-i="${i}" style="left:${posPct(i)}%;--c:${col}" title="${esc(s.clock+' '+s.title)}"></div>`;
+  html+=`<div class="tl-label ${cls}" data-i="${i}" style="left:${posPct(i)}%"><b>${esc(s.mark)}</b><span>${esc(s.clock)}</span></div>`;
+ });
+ html+='<div class="tl-head" id="tlHead"></div>';
+ tl.innerHTML=html;
+ tl.addEventListener('click',e=>{const m=e.target.closest('[data-i]');if(m)seek(starts[+m.dataset.i])});
+}
+function updateTimeline(ph,frac){
+ const p=(ph<N-1?lerp(posPct(ph),posPct(ph+1),frac):100).toFixed(3)+'%';
+ $('tlFill').style.width=p;$('tlHead').style.left=p;
+ tl.querySelectorAll('.tl-mark').forEach(el=>{const i=+el.dataset.i;el.classList.toggle('now',i===ph);el.classList.toggle('done',i<ph)});
+ tl.querySelectorAll('.tl-label').forEach(el=>el.classList.toggle('now',+el.dataset.i===ph));
+}
+function updateUI(force=false){
+ const ph=getPhase(pt),frac=clamp((pt-starts[ph])/phases[ph].dwell,0,1);
+ $('clock').textContent=clockOf(ph,frac);
+ updateTimeline(ph,frac);
+ if(ph===lastPhase&&!force)return;
+ lastPhase=ph;renderRunPanel(ph);
+}
+function seek(t){pt=clamp(t,0,TOTAL-.001);lastPhase=-1;updateUI(true);drawScene()}
+function step(dir){setPlayState(false);const ph=getPhase(pt);seek(starts[clamp(ph+dir,0,N-1)])}
+function setPlayState(next){playing=next;$('playText').textContent=playing?'暂停':'播放';$('playIcon').innerHTML=playing?'<rect x="4" y="3" width="3" height="10" rx=".9"/><rect x="9" y="3" width="3" height="10" rx=".9"/>':'<path d="M4 2.6a.65.65 0 0 1 .97-.57l8.4 5.39a.68.68 0 0 1 0 1.16l-8.4 5.39A.65.65 0 0 1 4 13.4z"/>'}
+$('playBtn').addEventListener('click',()=>setPlayState(!playing));
+$('stepBtn').addEventListener('click',()=>step(1));
+$('prevBtn').addEventListener('click',()=>step(-1));
+$('resetBtn').addEventListener('click',()=>{seek(0);setPlayState(true)});
+$('viewBtn').addEventListener('click',()=>{camera={...initialCamera};drawScene()});
+$('speed').addEventListener('change',e=>{speed=Number(e.target.value)||1});
+window.addEventListener('keydown',e=>{
+ if(e.target.closest&&e.target.closest('select,input,textarea'))return;
+ if(e.code==='Space'){e.preventDefault();setPlayState(!playing)}
+ else if(e.key==='ArrowRight')step(1);else if(e.key==='ArrowLeft')step(-1);
+});
+
+const tip=$('tip');
+function showTip(id,x,y){
+ if(!id){tip.hidden=true;return}
+ const n=byId[id];
+ tip.innerHTML=`<b>${n.code} ${esc(n.title)}</b><div class="tip-meta"><span class="kchip k-${n.kind}">${KIND[n.kind].label}</span><span class="chip">${LAYERS[n.layer].name}</span>${stPill(n.st)}</div>${esc(MODS[n.id].role)}`;
+ tip.hidden=false;
+ const r=canvas.getBoundingClientRect(),tw=tip.offsetWidth,th=tip.offsetHeight;
+ tip.style.left=clamp(x+16,8,r.width-tw-8)+'px';tip.style.top=clamp(y+16,8,r.height-th-8)+'px';
+}
+function pickNode(x,y){
+ for(let i=drawOrder.length-1;i>=0;i--){const n=drawOrder[i],r=n.labelRect;
+  if(r&&x>=r.x&&x<=r.x+r.w&&y>=r.y&&y<=r.y+r.h)return n.id;
+  if(n.hull&&inPoly(x,y,n.hull))return n.id}
+ return null;
+}
+let press=null;
+canvas.addEventListener('pointerdown',e=>{press={x:e.clientX,y:e.clientY,lx:e.clientX,ly:e.clientY,moved:false};canvas.setPointerCapture(e.pointerId)});
+canvas.addEventListener('pointermove',e=>{
+ const r=canvas.getBoundingClientRect();
+ if(press){
+  if(Math.hypot(e.clientX-press.x,e.clientY-press.y)>4)press.moved=true;
+  if(press.moved){tip.hidden=true;canvas.classList.add('dragging');camera.yaw=clamp(camera.yaw+(e.clientX-press.lx)*.0033,-.3,.85);camera.elev=clamp(camera.elev+(e.clientY-press.ly)*.0024,.3,1.2);press.lx=e.clientX;press.ly=e.clientY;drawScene()}
+  return;
+ }
+ const x=e.clientX-r.left,y=e.clientY-r.top,id=pickNode(x,y);
+ if(id!==hovered){hovered=id;canvas.classList.toggle('pointing',!!id);drawScene()}
+ showTip(id,x,y);
+});
+function endPress(e){
+ if(press&&!press.moved&&e.type==='pointerup'){const r=canvas.getBoundingClientRect(),id=pickNode(e.clientX-r.left,e.clientY-r.top);if(id)select(id)}
+ press=null;canvas.classList.remove('dragging');
+}
+canvas.addEventListener('pointerup',endPress);canvas.addEventListener('pointercancel',endPress);
+canvas.addEventListener('pointerleave',()=>{tip.hidden=true;if(hovered){hovered=null;canvas.classList.remove('pointing');drawScene()}});
+canvas.addEventListener('wheel',e=>{e.preventDefault();camera.zoom=clamp(camera.zoom*(e.deltaY<0?1.07:.93),.6,1.8);drawScene()},{passive:false});
+function resize(){const rect=canvas.getBoundingClientRect();W=rect.width;H=rect.height;computeFit();dpr=Math.min(window.devicePixelRatio||1,2);canvas.width=Math.round(W*dpr);canvas.height=Math.round(H*dpr);ctx.setTransform(dpr,0,0,dpr,0,0);drawScene()}
+new ResizeObserver(resize).observe(canvas);window.addEventListener('resize',resize);
+function loop(now){
+ if(!stamp)stamp=now;const dt=Math.min((now-stamp)/1000,.07);stamp=now;
+ if(playing){pt+=dt*speed;if(pt>=TOTAL){pt=0;lastPhase=-1}updateUI()}
+ drawScene();requestAnimationFrame(loop);
+}
+
+buildTimeline();renderDef();
+const qs=new URLSearchParams(location.search);
+if(qs.has('p'))pt=starts[clamp(parseInt(qs.get('p'))||0,0,N-1)]+.01;
+if(qs.get('paused')==='1')playing=false;
+if(qs.has('speed'))speed=Number(qs.get('speed'))||1;
+setPlayState(playing);
+if(qs.has('node'))select(qs.get('node'));else if(qs.get('tab'))setTab(qs.get('tab'));
+resize();updateUI(true);requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,36 @@
+# 负例：收拾东西后走向窗边（不是出口），随后坐回 → armed 后 disarmed，不应提醒
+name: false_leave
+duration_s: 20
+vlm_latency_ms: 1100
+default_view: {visible_places: [desk_1, door_1, window_1], persons_visible: [person_1], quality: clear}
+changes:
+  - {t_ms: 2000, box: [0, 0, 224, 126], color: [255, 255, 255]}
+  - {t_ms: 9000, box: [224, 0, 448, 126], color: [0, 0, 0]}
+  - {t_ms: 11000, box: [0, 126, 224, 252], color: [255, 255, 255]}
+  - {t_ms: 13000, box: [0, 126, 224, 252], color: [128, 128, 128]}
+observations:
+  - t_ms: 300
+    view: {visible_places: [n2, n3, n4], persons_visible: [n1]}
+    ops:
+      - {op: new, tmp: n1, type: PERSON, cls: person, label: P1}
+      - {op: new, tmp: n2, type: PLACE, cls: desk}
+      - {op: new, tmp: n3, type: PLACE, cls: door}
+      - {op: new, tmp: n4, type: PLACE, cls: window}
+      - {op: set, key: n1.activity, value: sitting_working, src: seen}
+  - t_ms: 2000
+    ops:
+      - {op: new, tmp: n1, type: OBJECT, cls: phone}
+      - {op: act, type: PUT_DOWN, subj: person_1, obj: n1, target: desk_1}
+  - t_ms: 9000
+    ops:
+      - {op: set, key: person_1.activity, value: packing, src: seen}
+  - t_ms: 11000
+    ops:
+      - {op: act, type: MOVING_TOWARD, subj: person_1, obj: window_1}
+  - t_ms: 13000
+    ops:
+      - {op: set, key: person_1.activity, value: sitting_working, src: seen}
+expect:
+  deliveries: []
+  max_decisions: 0
+  edges_contain: [armed, disarmed]

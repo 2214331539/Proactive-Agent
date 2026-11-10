@@ -1,0 +1,42 @@
+# 价值单位：1 分 = 正常状态下被一句简短语音打扰一次的不便（设计说明 §3.1）。
+# 以下全部是第一版人为设定，需要用标注数据与用户反馈校准。
+loss:            # L：机会成立且没人处理时的损失
+  safety: 100
+  essential: 8
+  convenience: 3
+  info: 1
+modes:           # η 有效率（action 让人去做 / locate 告诉位置）；C_int 打扰代价（normal / talking）；C_FA 说错的额外代价
+  AMBIENT: {eta: {action: 0.3, locate: 0.1}, c_int: {normal: 0.1, talking: 0.2}, c_fa: 0.2}
+  ASK:     {eta: {action: 0.85, locate: 0.85}, c_int: {normal: 1.5, talking: 2.5}, c_fa: 1.0}
+  REMIND:  {eta: {action: 0.9, locate: 0.9}, c_int: {normal: 1.0, talking: 2.0}, c_fa: 1.5}
+q:               # 不提醒也会自己处理的概率（情境先验；模型估计会与之平均）
+  hurried: 0.15
+  normal: 0.3
+  told_recently: 0.45
+  to_assistant: 0.1   # 对助理本身提的请求：没人会替它提醒
+hazard:          # H：截止马上就到的概率
+  goal: [0.03, 0.25, 0.85, 0.97]   # 出门阶段：坐着 / 起身准备 / 走向门口 / 已出门
+  asap: 0.9
+  trigger_fired: 0.85
+  trigger_armed: 0.3
+  trigger_idle: 0.05
+  need: 0.1
+  none: 0.05
+  time_window_s: 2                # time:<ms>：到点（前 2 s）H 升到 0.9；“三分钟后提醒我”应准点说
+wait:            # V(等) 的估计：再等一会儿能多获得多少把握
+  info_gain_goal: 0.5
+  info_gain_other: 0.2
+burden:          # 打扰负担：每次投递 X ← X·衰减 + 权重；C_int × (1 + k·X)
+  half_life_s: 600
+  k: 0.4
+  voice_weight: 1.0
+  ambient_weight: 0.3
+repeat:
+  second_multiplier: 2.0          # 同一机会第二次提醒 C_int ×2
+  max_voice: 2                    # 第三次起禁止
+  max_ambient: 1
+  min_gap_same_s: 90
+min_margin: 0.1                   # 开口价值至少要比 max(0, 等待价值) 高这么多，避免临界值反复开口
+rate:
+  voice_min_gap_s: 30
+  ambient_min_gap_s: 12

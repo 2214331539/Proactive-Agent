@@ -1,0 +1,43 @@
+# 全部使用 DeepSeek（2026-11-07 实测）
+# - deepseek-flash 支持图像输入；它默认先“思考”（reasoning_content 6k–12k 字符），会把 max_tokens 耗尽、正文为空。
+#   关闭思考 extra_body.thinking.type=disabled 后：首窗 3.4 s、输出完整（开思考时 21 s）。
+# - deepseek-v4-pro 看图返回空内容，不用。
+# 用法：pa ... --config config/deepseek.yaml   （密钥 DEEPSEEK_API_KEY 在 .env）
+perception:
+  provider: deepseek
+  model: deepseek-flash
+  workers: 4
+  timeout_s: 20
+  extra: {max_tokens: 3000, extra_body: {thinking: {type: disabled}}}
+
+decision:
+  provider: llm               # Jev 预留：provider: jev, model: jev-1.14.0（.env 填 TYPESAFE_API_KEY）
+  llm_provider: deepseek
+  model: deepseek-flash
+  timeout_s: 4
+  extra: {max_tokens: 400, extra_body: {thinking: {type: disabled}}}
+
+response:
+  provider: llm
+  llm_provider: deepseek
+  model: deepseek-flash
+  strategy: prefetch_llm
+  ttft_fallback_ms: 600
+  extra: {max_tokens: 300, extra_body: {thinking: {type: disabled}}}
+
+slow:                         # 慢环：情节摘要 + 把语音里的请求（如“别忘了带伞”）编译成需求
+  provider: llm
+  llm_provider: deepseek
+  model: deepseek-flash
+  every_s: 30
+  extra: {max_tokens: 1500, extra_body: {thinking: {type: disabled}}}
+
+proactive:                    # 主动决策核心（默认已开启，这里写明便于调参）
+  enabled: true
+  open_every_s: 30            # 开放发现：每 30 s 让模型看一眼状态和最近对话
+
+tts:                          # 豆包语音（.env 里的 DOUBAO_TTS_API_KEY）
+  enabled: true
+  api: seed-audio             # 当前 Key 只开通了 seed-audio（13–25 s/句，靠预合成）；开通 seed-tts-2.0 后改成 tts2
+  voice: ""                   # tts2 可填 zh_female_xiaohe_uranus_bigtts 等；seed-audio 填了会更慢
+  style: ""

@@ -1,0 +1,781 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>Proactive Video Agent · V2 Architecture</title>
+<style>
+:root{--ink:#202d40;--muted:#8190a1;--line:#e9edf2;--blue:#5387db;--cyan:#43a6cb;--green:#51a99b;--amber:#dfa260;--violet:#8f80cf}
+*{box-sizing:border-box}
+html,body{margin:0;width:100%;height:100%;font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;color:var(--ink);background:#fbfcfe}
+body{overflow:hidden}
+button,select,input{font:inherit}
+.app{height:100dvh;display:flex;flex-direction:column;min-height:640px;max-width:1960px;margin:auto}
+.header{height:84px;flex:0 0 84px;padding:20px 30px 14px 34px;display:flex;align-items:center;justify-content:space-between;gap:20px}
+.identity{display:flex;align-items:center;gap:15px}
+.logo{width:42px;height:42px;border-radius:14px;background:linear-gradient(135deg,#fff,#edf4ff);border:1px solid #e3eaf2;box-shadow:0 5px 15px #a9b9d01c;display:grid;place-items:center}
+.logo svg{width:26px;height:26px}
+h1{margin:0;font-size:23px;line-height:1.1;font-weight:670;letter-spacing:-.045em}
+h1 small{font-size:12px;font-weight:650;color:#9a6a3c;background:#fbeee0;border-radius:7px;padding:2px 7px;margin-left:8px;letter-spacing:0;vertical-align:3px}
+.header-sub{font-size:11px;color:#92a0b0;letter-spacing:.06em;margin-top:6px;font-weight:500}
+.controls{display:flex;gap:8px;align-items:center;flex-wrap:nowrap}
+.control{height:36px;padding:0 13px;display:inline-flex;justify-content:center;align-items:center;gap:7px;border:1px solid #e5eaf0;border-radius:10px;background:white;color:#516075;font-size:12px;font-weight:590;cursor:pointer;transition:background .16s,border-color .16s,transform .16s}
+.control:hover{background:#f4f7fb;border-color:#ccd8e6}.control:active{transform:scale(.98)}.control:focus-visible{outline:2px solid #83a8e9;outline-offset:2px}
+.control.primary{background:#263a52;border-color:#263a52;color:white;padding:0 17px}
+.control.primary:hover{background:#354f6d}
+.control svg{width:14px;height:14px}
+.control.icon-only{width:37px;padding:0}
+.control select{background:transparent;color:inherit;border:0;outline:0;cursor:pointer;font-size:12px}
+.live-dot{width:7px;height:7px;background:#68b7a4;border-radius:50%;box-shadow:0 0 0 4px #70c0b126;flex:0 0 auto}
+.main{display:grid;grid-template-columns:minmax(0,1fr) 384px;gap:16px;padding:0 26px 20px 30px;min-height:0;flex:1}
+.left{display:flex;flex-direction:column;gap:12px;min-width:0;min-height:0}
+.stage{position:relative;flex:1;min-height:0;overflow:hidden;border:1px solid #e9edf2;border-radius:22px;background:radial-gradient(ellipse 75% 65% at 46% 52%,#ffffff 10%,#fcfdff 74%,#f8fafc 120%);box-shadow:0 16px 50px #536d9110}
+#world{width:100%;height:100%;display:block;touch-action:none;cursor:grab}
+#world.dragging{cursor:grabbing}#world.pointing{cursor:pointer}
+.stage-top{position:absolute;top:18px;left:24px;right:22px;display:flex;justify-content:space-between;pointer-events:none;gap:12px}
+.stage-kicker{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:#a6b1be;font-weight:680}
+.scene-tag{font-size:10.5px;color:#a3aebb;letter-spacing:.02em;text-align:right}
+.stage-bottom{position:absolute;bottom:15px;left:22px;right:20px;display:flex;justify-content:space-between;align-items:flex-end;pointer-events:none;gap:12px}
+.legend{display:flex;flex-direction:column;gap:7px}
+.legend-row{display:flex;align-items:center;flex-wrap:wrap;gap:13px;color:#8d9cab;font-size:10.5px}
+.legend-item{display:flex;align-items:center;gap:6px;white-space:nowrap}
+.legend-dot{width:7px;height:7px;border-radius:3px}
+.kchip{font-size:9.5px;font-weight:700;border-radius:5px;padding:1px 6px;white-space:nowrap;flex:0 0 auto}
+.k-ai{background:#fbeee0;color:#a2683a}.k-prog{background:#e8f0fa;color:#4d6f99}.k-store{background:#efebfa;color:#6c5fa6}
+.hint{font-size:10.5px;color:#a8b3bf;white-space:nowrap}
+.timeline{flex:0 0 96px;border:1px solid #e9edf2;border-radius:18px;background:#fff;box-shadow:0 10px 30px #536d910b;padding:8px 26px 0;position:relative;user-select:none}
+.tl-inner{position:relative;height:100%}
+.tl-axis{position:absolute;left:0;right:0;top:30px;height:3px;background:#edf1f5;border-radius:4px;cursor:pointer}
+.tl-axis::before{content:"";position:absolute;left:0;right:0;top:-12px;bottom:-12px}
+.tl-fill{position:absolute;left:0;top:30px;height:3px;width:0;background:linear-gradient(90deg,#6aabdc,#6ab8aa);border-radius:4px;pointer-events:none}
+.tl-head{position:absolute;top:21px;width:2px;height:21px;margin-left:-1px;background:#d99b55;border-radius:2px;pointer-events:none}
+.tl-act{position:absolute;top:2px;transform:translateX(-50%);font-size:9.5px;color:#7d8b9a;white-space:nowrap;display:flex;flex-direction:column;align-items:center;gap:1px;pointer-events:none}
+.tl-act::after{content:"";width:0;height:0;border-left:4px solid transparent;border-right:4px solid transparent;border-top:6px solid #9aa8b6;margin-top:2px}
+.tl-mark{position:absolute;top:26px;width:11px;height:11px;margin-left:-5.5px;border-radius:50%;background:#fff;border:2px solid #cdd7e2;cursor:pointer;transition:transform .15s}
+.tl-mark.done{border-color:var(--c)}
+.tl-mark.now{background:var(--c);border-color:var(--c);transform:scale(1.3)}
+.tl-label{position:absolute;top:44px;transform:translateX(-50%);font-size:10px;color:#93a1b0;white-space:nowrap;cursor:pointer;padding:1px 3px;border-radius:5px}
+.tl-label.row1{top:62px}
+.tl-label.now{color:#3e5167;font-weight:680;background:#f3f6fa}
+.panel{border:1px solid #e9edf2;border-radius:22px;background:#fff;box-shadow:0 16px 50px #536d910d;display:flex;flex-direction:column;min-height:0;overflow:hidden}
+.tabs{display:flex;gap:2px;padding:10px 16px 0;border-bottom:1px solid #eef1f4;flex:0 0 auto}
+.tab-btn{border:0;background:transparent;padding:9px 12px 10px;font-size:12px;font-weight:640;color:#8a99aa;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px}
+.tab-btn.active{color:#263a52;border-bottom-color:#263a52}
+.tab-body{padding:16px 20px 20px;overflow:auto;min-height:0;flex:1}
+.tab-body.hidden{display:none}
+.eyebrow{display:flex;align-items:center;gap:8px;color:#8391a2;font-size:10px;font-weight:690;letter-spacing:.1em;text-transform:uppercase;flex-wrap:wrap}
+.eyebrow b{color:#4c5f75;font-variant-numeric:tabular-nums;letter-spacing:.02em}
+.slow-badge{background:#fbeee0;color:#a2683a;border-radius:6px;padding:1px 6px;letter-spacing:.02em;text-transform:none}
+.slow-badge[hidden]{display:none}
+.phase-title{font-size:19px;line-height:1.3;letter-spacing:-.035em;font-weight:690;margin:12px 0 6px;transition:color .25s}
+.phase-desc{font-size:12px;line-height:1.72;color:#7d8ea0;margin:0}
+.sec{margin-top:16px}
+.sec-head{display:flex;justify-content:space-between;align-items:center;font-size:10px;color:#99a8b8;letter-spacing:.08em;text-transform:uppercase;font-weight:660;margin-bottom:8px}
+.sec-head .aux{text-transform:none;letter-spacing:0;color:#a8b4c1;font-weight:560}
+.msg-block{border:1px solid #edf0f5;border-radius:12px;background:#fafbfd;margin-bottom:8px;overflow:hidden}
+.msg-top{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:7px 10px;border-bottom:1px solid #eef1f5;font-size:11px}
+.msg-type{font-weight:720;color:#34485f;display:flex;align-items:center;gap:6px}
+.msg-type i{width:7px;height:7px;border-radius:2px;display:inline-block}
+.msg-route{color:#8a99aa;font-size:10.5px;white-space:nowrap}
+pre.msg{margin:0;padding:8px 10px;font:10.5px/1.55 "JetBrains Mono","Cascadia Mono",Consolas,"SFMono-Regular",monospace;color:#4a5a6d;white-space:pre-wrap;overflow-wrap:anywhere;max-height:160px;overflow:auto}
+.j-k{color:#7465b4}.j-s{color:#3d8a76}.j-n{color:#b9772f}
+table.beliefs{width:100%;border-collapse:collapse;font-size:11px;table-layout:fixed}
+.beliefs th{text-align:left;font-weight:620;color:#a3afbc;font-size:9.5px;letter-spacing:.05em;padding:0 4px 6px 0}
+.beliefs th:nth-child(1){width:37%}.beliefs th:nth-child(2){width:33%}.beliefs th:nth-child(3){width:16%}
+.beliefs td{padding:6px 4px 6px 0;border-top:1px solid #f0f2f6;color:#4f6276;vertical-align:top;word-break:break-word}
+.beliefs td.key{font-family:"JetBrains Mono","Cascadia Mono",Consolas,monospace;font-size:10px;color:#5d6f84}
+.beliefs tr.changed td{background:#fff5e6}
+.beliefs tr.changed{animation:statePop .9s ease}
+.beliefs tr.empty td{color:#a9b4c0;font-style:italic;text-align:center}
+@keyframes statePop{0%{opacity:.35}100%{opacity:1}}
+.tag{display:inline-block;padding:1px 6px;border-radius:6px;font-size:9.5px;font-weight:660;white-space:nowrap}
+.t-seen{background:#e6f0fb;color:#4c74a3}.t-heard{background:#f2ecfb;color:#6f5fa8}.t-user_confirmed{background:#e3f4ed;color:#3b8a70}
+.t-holds{background:#e9f5f1;color:#3d8a72}.t-stale{background:#fdf1e2;color:#a8742f}.t-unknown{background:#f1f3f6;color:#7a8796}
+.need-phases{display:flex;gap:4px}
+.np{flex:1;text-align:center;font-size:9.5px;padding:6px 0;border-radius:8px;background:#f3f5f9;color:#a3afbc;font-weight:640}
+.np.past{background:#e7eef8;color:#60809f}
+.np.now{background:#fbe9d3;color:#9a632c;box-shadow:inset 0 0 0 1px #efc995}
+.need-none{font-size:11px;color:#a9b4c0;font-style:italic}
+.kv{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:9px 0;border-top:1px solid #eef1f4;font-size:11px}
+.kv span{color:#99a5b1;white-space:nowrap}.kv strong{color:#4d6074;font-weight:650;text-align:right}
+.kv strong.hot{color:#b07a3e}
+.event-row{display:flex;gap:9px;align-items:flex-start;font-size:11px;line-height:1.6;color:#56697b;margin-bottom:7px}
+.event-row i{width:6px;height:6px;border-radius:2px;margin-top:6px;flex:0 0 auto}
+.event-time{font-variant-numeric:tabular-nums;color:#a0adbb;flex:0 0 44px;font-size:10.5px}
+.event-row.old{opacity:.55}
+.mod-index-group{margin-bottom:14px}
+.mod-index-title{font-size:10px;color:#99a8b8;letter-spacing:.08em;font-weight:660;margin-bottom:6px}
+.mod-link{display:flex;align-items:center;gap:8px;width:100%;border:1px solid #eef1f5;background:#fbfcfe;border-radius:10px;padding:8px 10px;margin-bottom:5px;cursor:pointer;text-align:left;color:#3f5268;font-size:12px;font-weight:600}
+.mod-link:hover{background:#f3f7fb;border-color:#dbe4ee}
+.mod-link>span:nth-child(2),.mod-link{white-space:nowrap}
+.mod-link .role{color:#93a1b0;font-weight:500;font-size:10.5px;margin-left:auto;max-width:150px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mod-chips{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.chip{font-size:10px;font-weight:680;border-radius:6px;padding:2px 7px;background:#f1f4f8;color:#5d6f84}
+.back-btn{border:0;background:transparent;color:#7f90a3;font-size:11px;cursor:pointer;padding:0;margin-left:auto}
+.back-btn:hover{color:#2d4157}
+.mod-name{font-size:20px;letter-spacing:-.035em;font-weight:700;margin:12px 0 6px}
+.mod-role{font-size:12px;line-height:1.7;color:#6f8195;margin:0 0 12px}
+dl.fields{margin:0}
+dl.fields div{display:grid;grid-template-columns:70px 1fr;gap:10px;padding:8px 0;border-top:1px solid #f0f2f6;font-size:11.5px;line-height:1.6}
+dl.fields dt{color:#9aa7b5;font-weight:600;font-size:10.5px}
+dl.fields dd{margin:0;color:#43566c}
+.io{display:flex;flex-direction:column;gap:5px}
+.io button{display:flex;gap:7px;align-items:center;border:1px solid #eef1f5;background:#fbfcfe;border-radius:9px;padding:6px 9px;font-size:11px;color:#4a5d72;cursor:pointer;text-align:left}
+.io button:hover{background:#f3f7fb}
+.io button i{width:7px;height:7px;border-radius:2px;flex:0 0 auto}
+.io button em{font-style:normal;color:#8e9dad;margin-left:auto;font-size:10.5px}
+.mod-now{margin-top:12px;font-size:11px;line-height:1.6;color:#8a6a45;background:#fdf5ea;border-radius:10px;padding:8px 10px}
+.mod-now[hidden]{display:none}
+#err{position:fixed;left:12px;bottom:12px;z-index:9;background:#fff0ef;color:#a33b32;border:1px solid #f1c3be;border-radius:10px;padding:8px 12px;font-size:12px}
+#err[hidden]{display:none}
+@media(max-width:1100px){.main{grid-template-columns:minmax(0,1fr) 330px}.header-sub{display:none}}
+@media(max-width:820px){body{overflow:auto}.app{height:auto}.main{display:flex;flex-direction:column}.stage{height:560px;flex:0 0 560px}.panel{min-height:520px}.controls{flex-wrap:wrap}.header{height:auto;flex-wrap:wrap}}
+@media(prefers-reduced-motion:reduce){.tl-mark,.control,.phase-title{transition:none}.beliefs tr.changed{animation:none}}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="header">
+    <div class="identity">
+      <div class="logo" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M4 14C7 7 9 7 12 14S18 19 20 12" stroke="#6595cc" stroke-width="2.2" stroke-linecap="round"/><circle cx="5" cy="15.5" r="2.2" fill="#7cbcb4"/><circle cx="18.5" cy="13.5" r="2.2" fill="#d9ae79"/></svg></div>
+      <div><h1>Proactive Agent<small>V2</small></h1><div class="header-sub">AI 提议 · 程序裁决 · 触发沿决策 · 三层时间尺度</div></div>
+    </div>
+    <div class="controls">
+      <button class="control primary" id="playBtn" title="播放 / 暂停（空格）"><svg viewBox="0 0 16 16" fill="currentColor" id="playIcon"><path d="M4 2.6a.65.65 0 0 1 .97-.57l8.4 5.39a.68.68 0 0 1 0 1.16l-8.4 5.39A.65.65 0 0 1 4 13.4z"/></svg><span id="playText">暂停</span></button>
+      <button class="control icon-only" id="prevBtn" title="上一阶段（←）"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="m13 3-7 5 7 5M3.5 3v10"/></svg></button>
+      <button class="control" id="stepBtn" title="下一阶段（→）"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="m3 3 7 5-7 5M12.5 3v10"/></svg>单步</button>
+      <button class="control icon-only" id="resetBtn" title="重新开始"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M13.8 7A5.9 5.9 0 1 0 14 9M14 3v4h-4"/></svg></button>
+      <button class="control icon-only" id="viewBtn" title="重置视角"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="m8 1 6 3.5v7L8 15l-6-3.5v-7Z"/><path d="M8 8 2 4.5M8 8l6-3.5M8 8v7"/></svg></button>
+      <label class="control">速度 <select id="speed" aria-label="播放速度"><option value="0.5">0.5×</option><option value="0.75">0.75×</option><option value="1" selected>1×</option><option value="1.5">1.5×</option><option value="2">2×</option></select></label>
+    </div>
+  </header>
+  <main class="main">
+    <div class="left">
+      <section class="stage" aria-label="V2 系统架构 3D 场景">
+        <canvas id="world"></canvas>
+        <div class="stage-top"><span class="stage-kicker">Architecture V2 / 3D</span><span class="scene-tag">点击任一模块查看数据结构与调用方式</span></div>
+        <div class="stage-bottom">
+          <div class="legend">
+            <div class="legend-row"><span class="legend-item"><span class="kchip k-ai">AI</span>模型调用</span><span class="legend-item"><span class="kchip k-prog">程序</span>确定性代码</span><span class="legend-item"><span class="kchip k-store">存储</span>SQLite</span></div>
+            <div class="legend-row"><span class="legend-item"><i class="legend-dot" style="background:#83B4E3"></i>感知</span><span class="legend-item"><i class="legend-dot" style="background:#A79DDB"></i>状态</span><span class="legend-item"><i class="legend-dot" style="background:#DFA96D"></i>决策</span><span class="legend-item"><i class="legend-dot" style="background:#7FC1B1"></i>响应 / 反馈</span><span class="legend-item"><i class="legend-dot" style="background:#A9B6C8"></i>慢环</span></div>
+          </div>
+          <span class="hint">拖动旋转 · 滚轮缩放 · 空格播放 · ← → 切换阶段</span>
+        </div>
+      </section>
+      <section class="timeline" aria-label="剧情时间轴"><div class="tl-inner" id="tl"></div></section>
+    </div>
+    <aside class="panel" aria-label="运行时与模块详情">
+      <div class="tabs" role="tablist">
+        <button class="tab-btn active" data-tab="run" role="tab">运行时</button>
+        <button class="tab-btn" data-tab="mod" role="tab">模块详情</button>
+      </div>
+      <div class="tab-body" id="tab-run">
+        <div class="eyebrow"><span class="live-dot"></span>会话时间 <b id="clock">00:00.0</b> · 状态 v<b id="ver">0</b><span class="slow-badge" id="slowBadge" hidden>慢放</span></div>
+        <div class="phase-title" id="phaseTitle"></div>
+        <p class="phase-desc" id="phaseDesc"></p>
+        <div class="sec"><div class="sec-head"><span>本阶段传递的消息</span><span class="aux" id="msgCount"></span></div><div id="msgs"></div></div>
+        <div class="sec"><div class="sec-head"><span>State Store · 信念槽</span><span class="aux">M5 内存</span></div>
+          <table class="beliefs"><thead><tr><th>槽位</th><th>值</th><th>来源</th><th>状态</th></tr></thead><tbody id="beliefs"></tbody></table></div>
+        <div class="sec"><div class="sec-head"><span>Agenda · need_1</span><span class="aux">possible_forgotten_item</span></div><div id="needPhases"></div></div>
+        <div class="sec">
+          <div class="kv"><span>Decision · Jev</span><strong id="decision"></strong></div>
+          <div class="kv"><span>Response</span><strong id="response"></strong></div>
+        </div>
+        <div class="sec"><div class="sec-head"><span>Event Log</span><span class="aux">按 t_avail 排序</span></div><div id="events"></div></div>
+      </div>
+      <div class="tab-body hidden" id="tab-mod"></div>
+    </aside>
+  </main>
+</div>
+<div id="err" hidden></div>
+<script>
+(()=>{
+'use strict';
+window.addEventListener('error',e=>{const b=document.getElementById('err');b.textContent='脚本错误：'+e.message;b.hidden=false});
+const canvas=document.querySelector('#world'),ctx=canvas.getContext('2d',{alpha:true});
+const $=id=>document.getElementById(id);
+const DURATION=20;
+const FONT='Inter,-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif';
+const KIND={
+ ai:{label:'AI',base:'#f5ece2',accent:'#e0a873',chipBg:'#fbeee0',chipInk:'#a2683a',stroke:'#e4d2be'},
+ prog:{label:'程序',base:'#e5edf8',accent:'#7ea8db',chipBg:'#e8f0fa',chipInk:'#4d6f99',stroke:'#cfdbe8'},
+ store:{label:'存储',base:'#ebe8f6',accent:'#a99ddf',chipBg:'#efebfa',chipInk:'#6c5fa6',stroke:'#d8d2ee'}
+};
+const GRP={video:'#83B4E3',state:'#A79DDB',decision:'#DFA96D',response:'#7FC1B1',slow:'#A9B6C8'};
+const LAYER={L0:'L0 前端 · 每帧',L1:'L1 热路径 · 秒级',L2:'L2 慢环 · 后台'};
+const NEED_PHASES=['idle','armed','fired','deciding','awaiting','resolved'];
+const SRC_LABEL={seen:'seen',heard:'heard',user_confirmed:'user ✓',inferred:'inferred'};
+
+const nodes=[
+ {id:'source',code:'M1',title:'Source · Clock',kind:'prog',deco:'camera',layer:'L0',x:-6.85,z:.25,w:1.35,d:1.5,h:.45,lab:1.0},
+ {id:'gate',code:'M2',title:'Frame Gate',kind:'prog',deco:'gate',layer:'L0',x:-4.6,z:-1.05,w:1.35,d:1.25,h:.42,lab:.92},
+ {id:'speech',code:'M3',title:'Speech · Identity',kind:'ai',deco:'wave',layer:'L0',x:-4.6,z:1.55,w:1.35,d:1.25,h:.42,lab:.86},
+ {id:'vlm',code:'M4',title:'Perception VLM',kind:'ai',deco:'grid',layer:'L1',x:-2.15,z:.2,w:1.5,d:1.6,h:.55,lab:.92},
+ {id:'state',code:'M5',title:'State Actor',kind:'prog',deco:'state',layer:'L1',x:.55,z:.2,w:2.2,d:2.1,h:.46,lab:1.12},
+ {id:'agenda',code:'M6',title:'Agenda',name:'Agenda & Scheduler',kind:'prog',deco:'agenda',layer:'L1',x:2.95,z:.2,w:1.5,d:1.45,h:.44,lab:.86},
+ {id:'decision',code:'M7',title:'Decision · Jev',kind:'ai',deco:'dial',layer:'L1',x:5.25,z:-1.5,w:1.55,d:1.35,h:.48,lab:.9},
+ {id:'response',code:'M8',title:'Response',kind:'ai',deco:'bars',layer:'L1',x:5.25,z:1.85,w:1.55,d:1.35,h:.5,lab:.98},
+ {id:'policy',code:'M9',title:'Policy Gate',kind:'prog',deco:'pillars',layer:'L1',x:7.2,z:.2,w:1.1,d:1.05,h:.4,lab:1.0},
+ {id:'output',code:'M10',title:'Output · Feedback',kind:'prog',deco:'output',layer:'L1',x:8.35,z:2.3,w:1.25,d:1.15,h:.38,lab:.8},
+ {id:'log',code:'M11',title:'Event Log',kind:'store',deco:'stack',layer:'L2',x:-.3,z:-3.35,w:1.3,d:1.1,h:.38,lab:.85},
+ {id:'consol',code:'M12',title:'Consolidator',kind:'ai',deco:'ring',layer:'L2',x:1.85,z:-3.35,w:1.35,d:1.1,h:.45,lab:.92},
+ {id:'ltm',code:'M13',title:'Long-term Memory',kind:'store',deco:'stack',layer:'L2',x:4.0,z:-3.35,w:1.3,d:1.1,h:.4,lab:.85}
+];
+const byId=Object.fromEntries(nodes.map(n=>[n.id,n]));
+const P=(x,y,z)=>({x,y,z});
+const curves=[
+ {id:'src_gate',from:'source',to:'gate',grp:'video',msg:'FrameRef',rate:1.4,pts:[P(-6.35,.58,-.35),P(-5.85,.82,-.85),P(-5.3,.6,-1.05)]},
+ {id:'src_speech',from:'source',to:'speech',grp:'video',msg:'AudioChunk',rate:1.3,pts:[P(-6.35,.58,.85),P(-5.85,.82,1.35),P(-5.3,.6,1.55)]},
+ {id:'gate_vlm',from:'gate',to:'vlm',grp:'video',msg:'WindowRequest',rate:1.3,pts:[P(-3.9,.55,-.95),P(-3.35,.8,-.55),P(-2.92,.62,-.15)]},
+ {id:'speech_vlm',from:'speech',to:'vlm',grp:'video',msg:'Utterance · FaceBox',lo:15,rate:1.2,pts:[P(-3.9,.55,1.45),P(-3.35,.8,1.05),P(-2.92,.62,.6)]},
+ {id:'slice',from:'state',to:'vlm',grp:'state',msg:'StateSlice',rate:1.1,pts:[P(-.56,.62,-.3),P(-.98,1.25,-.32),P(-1.38,.74,-.3)]},
+ {id:'patch',from:'vlm',to:'state',grp:'state',msg:'StatePatch',rate:1.2,pts:[P(-1.38,.6,.62),P(-.98,.86,.66),P(-.56,.6,.62)]},
+ {id:'delta',from:'state',to:'agenda',grp:'state',msg:'StateDelta → NeedEdge',lo:17,rate:1.2,pts:[P(1.66,.58,.2),P(1.93,.8,.2),P(2.2,.58,.2)]},
+ {id:'history',from:'ltm',to:'agenda',grp:'slow',msg:'History',rate:1,pts:[P(3.7,.55,-2.78),P(3.35,.92,-1.6),P(3.05,.58,-.54)]},
+ {id:'prefetch',from:'agenda',to:'response',grp:'response',msg:'DraftJob（armed）',lu:.32,lo:14,rate:1,pts:[P(3.55,.58,.93),P(4.0,.86,1.55),P(4.47,.62,1.85)]},
+ {id:'fire',from:'agenda',to:'decision',grp:'decision',msg:'DecisionJob（fired）',lu:.7,lo:18,rate:1,pts:[P(3.55,.58,-.53),P(4.0,.86,-1.2),P(4.47,.62,-1.5)]},
+ {id:'dec_gate',from:'decision',to:'policy',grp:'decision',msg:'Decision',rate:1,pts:[P(6.03,.6,-1.2),P(6.6,.86,-.75),P(6.9,.55,-.33)]},
+ {id:'draft_gate',from:'response',to:'policy',grp:'response',msg:'ResponseDraft',rate:1,pts:[P(6.03,.62,1.55),P(6.6,.86,1.1),P(6.95,.55,.73)]},
+ {id:'deliver',from:'policy',to:'output',grp:'response',msg:'Delivery',rate:1.05,pts:[P(7.6,.5,.73),P(7.95,.75,1.3),P(8.15,.52,1.72)]},
+ {id:'feedback',from:'output',to:'state',grp:'response',msg:'Feedback → StatePatch',rate:.5,pts:[P(8.5,.45,2.9),P(8.0,.3,3.75),P(4.0,.18,3.75),P(1.2,.22,3.2),P(.85,.5,1.27)]},
+ {id:'log',from:'state',to:'log',grp:'slow',msg:'LogRecord',rate:.8,pts:[P(-.1,.58,-.86),P(-.25,.85,-1.85),P(-.3,.55,-2.8)]},
+ {id:'log_consol',from:'log',to:'consol',grp:'slow',msg:'新日志',rate:1,pts:[P(.36,.5,-3.35),P(.77,.72,-3.35),P(1.17,.52,-3.35)]},
+ {id:'consol_ltm',from:'consol',to:'ltm',grp:'slow',msg:'Episode',rate:1,pts:[P(2.53,.55,-3.35),P(2.94,.76,-3.35),P(3.35,.52,-3.35)]},
+ {id:'consol_state',from:'consol',to:'state',grp:'slow',msg:'StatePatch（consolidator）',rate:.9,pts:[P(1.6,.6,-2.8),P(1.5,.92,-1.8),P(1.3,.58,-.86)]},
+ {id:'focus',from:'agenda',to:'gate',grp:'decision',msg:'Focus（心跳 1.5 s）',lu:.62,rate:.55,pts:[P(2.5,.6,-.53),P(1.0,1.65,-1.55),P(-2.2,1.65,-1.75),P(-3.93,.58,-1.25)]}
+];
+const STEADY=new Set(['src_gate','src_speech','log']);
+const zones=[
+ {layer:'L0',pts:[[-7.85,-2.1],[-3.6,-2.1],[-3.6,2.55],[-6.0,2.55],[-7.85,1.3]],lx:-7.55,lz:1.15},
+ {layer:'L1',pts:[[-3.2,-2.5],[6.35,-2.5],[8.1,-.7],[9.2,1.4],[9.2,3.95],[-3.2,3.95]],lx:-2.95,lz:3.6},
+ {layer:'L2',pts:[[-1.3,-4.25],[5.0,-4.25],[5.0,-2.6],[-1.3,-2.6]],lx:4.75,lz:-4.0}
+];
+
+const B_ACT=a=>['person_1.activity',a,'seen','holds'];
+const B_PHONE_DESK=['phone_1.location','ON desk_1','seen','holds'];
+const B_BAG=['backpack_1.location','HELD_BY person_1','seen','holds'];
+const phases=[
+ {t:0,mark:'接入',grp:'video',title:'视频接入',
+  desc:'M1 按 1× 时钟推帧，M2 写入 10 s 环形缓冲并计算变化分数，音频进入 M3。此时 State 为空，热路径还没有调用任何模型。',
+  focus:['source','gate','speech'],flows:['src_gate','src_speech'],ver:0,beliefs:[],changed:[],need:null,dec:'未调用',resp:'待命',
+  msgs:[{type:'FrameRef',grp:'video',route:'M1 → M2',body:{frame_id:'f_000001',pts_ms:0,t_avail_ms:40,change_score:0}},
+        {type:'AudioChunk',grp:'video',route:'M1 → M3',body:{chunk_id:'a_0001',start_ms:0,end_ms:500,hz:16000}}],
+  ev:[['00:00.0','会话开始 · 视频 / 音频接入','video']]},
+ {t:1.5,mark:'W0',grp:'state',title:'初始化场景 · W0',
+  desc:'Gate 在 00:00.4 发出第一个 heartbeat 窗口 W0。VLM 拿到空切片（v0），用 new 创建人物、桌子和门，并写入第一条信念；State Actor 校验后提交为 v1。',
+  focus:['gate','vlm','state'],flows:['gate_vlm','slice','patch'],ver:1,beliefs:[B_ACT('sitting_working')],changed:['person_1.activity'],need:null,dec:'未调用',resp:'待命',
+  msgs:[{type:'StatePatch',grp:'state',route:'M4 → M5 · w_000',body:{patch_id:'patch_000',window_id:'w_000',trigger:'heartbeat',slice_version:0,
+   ops:[{op:'new',tmp:'n1',type:'PERSON',desc:'灰色卫衣'},{op:'new',tmp:'n2',type:'PLACE',cls:'desk'},{op:'new',tmp:'n3',type:'PLACE',cls:'door'},{op:'set',key:'n1.activity',value:'sitting_working',src:'seen'}],latency_ms:1050}}],
+  ev:[['00:01.5','W0 提交 · v1：person_1、desk_1、door_1','state']]},
+ {t:3.6,mark:'W1→v2',grp:'state',title:'感知补丁：手机放到桌上',
+  desc:'00:02.0 手机被放下，00:02.4 画面变化触发 W1。VLM 只输出变化：新实体 phone_1 及其位置。Reducer 生成 Delta v2；触发引擎按模板实例化 need_1，进入 idle。',
+  focus:['vlm','state','agenda'],flows:['gate_vlm','patch','delta'],ver:2,beliefs:[B_ACT('sitting_working'),B_PHONE_DESK],changed:['phone_1.location'],need:'idle',dec:'未调用',resp:'待命',
+  msgs:[{type:'StatePatch',grp:'state',route:'M4 → M5 · w_001',body:{window_id:'w_001',trigger:'change',slice_version:1,
+   ops:[{op:'new',tmp:'n1',type:'OBJECT',cls:'phone',desc:'黑色手机'},{op:'set',key:'n1.location',value:{rel:'ON',ref:'desk_1'},src:'seen',ev:['f_000012']}],latency_ms:1180}},
+   {type:'NeedEdge',grp:'decision',route:'触发引擎 → Scheduler',body:{edge_id:'edge_001',need_id:'need_1',edge:'instantiated',kind:'possible_forgotten_item',bindings:{item:'phone_1',person:'person_1'},state_version:2}}],
+  ev:[['00:03.6','W1 提交 · v2：phone_1.location = ON desk_1','state'],['00:03.6','need_1 实例化 → idle','decision']]},
+ {t:6.0,mark:'still',grp:'video',title:'无变化：只确认，不决策',
+  desc:'Heartbeat 窗口 W2：切片里 phone_1 被标为 CHECK，VLM 回答 still。Reducer 只刷新 last_support，不生成 Delta，触发引擎不评估，也不调用 Jev。（V1 在这里会轮询一次决策。）',
+  focus:['gate','vlm','state'],flows:['gate_vlm','slice','patch'],ver:2,beliefs:[B_ACT('sitting_working'),B_PHONE_DESK],changed:[],need:'idle',dec:'未调用（无 Delta）',resp:'待命',
+  msgs:[{type:'StatePatch',grp:'state',route:'M4 → M5 · w_002',body:{window_id:'w_002',trigger:'heartbeat',slice_version:2,ops:[{op:'still',keys:['person_1.activity','phone_1.location']}],view:{visible_places:['desk_1','door_1'],quality:'clear'}}}],
+  ev:[['00:06.0','W2 只有 still · 无 Delta · 未调用决策','video']]},
+ {t:7.5,mark:'慢环',grp:'slow',title:'L2 慢环：整理进长期记忆',
+  desc:'Consolidator 读取 Event Log（真实配置为每 30 s 一次，这里为演示提前），把 0–7.5 s 总结成情节 ep_001，00:09.8 起可用。它在后台运行，失败也不影响热路径。',
+  focus:['log','consol','ltm'],flows:['log','log_consol','consol_ltm'],ver:2,beliefs:[B_ACT('sitting_working'),B_PHONE_DESK],changed:[],need:'idle',dec:'未调用',resp:'待命',
+  msgs:[{type:'Episode',grp:'slow',route:'M12 → M13',body:{episode_id:'ep_001',t_start_ms:0,t_end_ms:7500,t_avail_ms:9800,entity_ids:['person_1','phone_1','desk_1'],text:'person_1 在 desk_1 前工作；00:02 把 phone_1 放在 desk_1 上。'}}],
+  ev:[['00:07.5','Consolidator 开始整理 0–7.5 s → ep_001','slow']]},
+ {t:10.4,mark:'armed',grp:'decision',rate:.6,title:'状态变化：拿起背包 → armed',
+  desc:'00:09.0 用户拿起背包，W3 提交后 activity 变为 packing（v3）。依赖索引找到 need_1，arm 条件由假变真，进入 armed：预取上下文和 ep_001，让 Response 预生成草稿，并向 Gate 发出 Focus（心跳缩短为 1.5 s）。此时仍不调用 Jev。',
+  focus:['state','agenda','ltm','response','gate'],flows:['patch','delta','history','prefetch','focus'],ver:3,beliefs:[B_ACT('packing'),B_PHONE_DESK,B_BAG],changed:['person_1.activity','backpack_1.location'],need:'armed',dec:'未调用',resp:'预生成中…',respActive:true,
+  msgs:[{type:'StatePatch',grp:'state',route:'M4 → M5 · w_003',body:{window_id:'w_003',trigger:'change',slice_version:2,
+   ops:[{op:'new',tmp:'n1',type:'OBJECT',cls:'backpack',desc:'黑色双肩包'},{op:'act',type:'PICK_UP',subj:'person_1',obj:'n1',ev:['f_000046']},{op:'set',key:'person_1.activity',value:'packing',src:'seen'},{op:'still',keys:['phone_1.location']}]}},
+   {type:'NeedEdge',grp:'decision',route:'触发引擎 → Scheduler',body:{edge_id:'edge_002',need_id:'need_1',edge:'armed',state_version:3,caused_by:'delta_003',dep_revs:{'person_1.activity':2,'phone_1.location':1}}}],
+  ev:[['00:10.4','W3 提交 · v3：backpack_1 HELD_BY person_1，activity = packing','state'],['00:10.4','need_1 armed → 预取、DraftJob、Focus','decision']]},
+ {t:11.3,mark:'草稿',grp:'response',rate:.7,title:'预备完成：草稿已就绪',
+  desc:'Response 在 armed 期间用 0.9 s 生成草稿，缓存在 need_1.prefetch，并通过 claims 声明它断言了 phone_1.location（probable）。要不要发送仍未决定。',
+  focus:['response','agenda'],flows:['prefetch'],ver:3,beliefs:[B_ACT('packing'),B_PHONE_DESK,B_BAG],changed:[],need:'armed',dec:'未调用',resp:'草稿就绪（未发送）',
+  msgs:[{type:'ResponseDraft',grp:'response',route:'M8 → M6（缓存）',body:{draft_id:'dr_001',mode:'REMIND',text:'你的手机好像还在桌上，要带上吗？',claims:[{key:'phone_1.location',value:'ON desk_1',stated_as:'probable'}],context_version:3,origin:'prefetch',latency_ms:900}}],
+  ev:[['00:11.3','dr_001 草稿就绪（未发送）','response']]},
+ {t:12.3,mark:'fired',grp:'decision',rate:.5,title:'触发沿：走向门口 → fired',
+  desc:'00:11.0 用户边说"我得走了"边走向门口。W4 提交 MOVING_TOWARD，并确认手机仍在桌上（still），得到 v4。fire 条件出现上升沿，刷新上下文后调用 Jev：这是整段剧情里唯一一次决策调用。',
+  focus:['speech','vlm','state','agenda','decision'],flows:['speech_vlm','patch','delta','fire'],ver:4,beliefs:[B_ACT('moving_to_exit'),B_PHONE_DESK,B_BAG],changed:['person_1.activity'],need:'fired',dec:'请求中 · ctx_001',resp:'草稿就绪（未发送）',decActive:true,
+  msgs:[{type:'StatePatch',grp:'state',route:'M4 → M5 · w_004',body:{window_id:'w_004',trigger:'change',slice_version:3,
+   ops:[{op:'act',type:'MOVING_TOWARD',subj:'person_1',obj:'door_1',ev:['f_000056']},{op:'still',keys:['phone_1.location']},{op:'said',utt_id:'u_0001',speaker:'person_1',intent:'info',content:'我得走了'}]}},
+   {type:'DecisionContext',grp:'decision',route:'M6 → M7 · DecisionJob',body:{context_id:'ctx_001',need_id:'need_1',state_version:4,
+   need:{kind:'possible_forgotten_item',fire_reason:'person_1.activity: packing → moving_to_exit',mode_cap:'REMIND'},
+   beliefs:['phone_1.location = ON desk_1 (seen, holds)','person_1.activity = moving_to_exit (seen, holds)','backpack_1.location = HELD_BY person_1 (seen, holds)'],
+   history:['ep_001：00:02 把 phone_1 放在 desk_1 上']}}],
+  ev:[['00:12.3','W4 提交 · v4：activity = moving_to_exit','state'],['00:12.3','need_1 fired → DecisionJob(ctx_001)','decision']]},
+ {t:13.1,mark:'REMIND',grp:'decision',rate:.06,title:'Jev 决策：REMIND',
+  desc:'Jev 返回 warranted = 0.86、mode = REMIND。程序规则：phone_1.location 为 seen / holds，mode_cap 允许 REMIND（否则自动降级为 ASK）。Scheduler 把决策和预生成的草稿一起交给 Policy Gate。',
+  focus:['decision','policy','response'],flows:['dec_gate','draft_gate'],ver:4,beliefs:[B_ACT('moving_to_exit'),B_PHONE_DESK,B_BAG],changed:[],need:'deciding',dec:'REMIND · warranted 0.86',resp:'等待复核',decActive:true,policy:'check',
+  msgs:[{type:'Decision',grp:'decision',route:'M7 → M9',body:{decision_id:'dec_001',context_id:'ctx_001',status:'ok',warranted:0.86,mode:'REMIND',mode_probs:{WAIT:0.08,ASK:0.21,REMIND:0.71},applied_mode:'REMIND',latency_ms:780}}],
+  ev:[['00:13.1','Jev → REMIND · warranted 0.86','decision']]},
+ {t:13.2,mark:'发送',grp:'response',title:'Policy Gate 复核 → 发送',
+  desc:'发送前用当前状态重新计算：fire 仍为真，resolve 仍为假，依赖槽位版本未变，claims 与信念一致，也不在冷却期，于是直接发出预生成的草稿。从开始走向门口（00:11.0）到首字可见约 2.2 s（示意值）。',
+  focus:['policy','output'],flows:['deliver'],ver:4,beliefs:[B_ACT('moving_to_exit'),B_PHONE_DESK,B_BAG],changed:[],need:'awaiting',dec:'REMIND（已执行）',resp:'已发送 · dl_001',policy:'pass',bubble:true,
+  msgs:[{type:'Delivery',grp:'response',route:'M9 → M10',body:{delivery_id:'dl_001',need_id:'need_1',decision_id:'dec_001',draft_id:'dr_001',text:'你的手机好像还在桌上，要带上吗？',t_first_visible_ms:13200,checks:{fire:true,resolve:false,dep_revs:'unchanged',claims:'ok',cooldown:'ok'}}}],
+  ev:[['00:13.2','Policy Gate 通过 → dl_001 首字可见','response']]},
+ {t:16.0,mark:'resolved',grp:'state',title:'视觉证据：手机被取回',
+  desc:'00:15.0 用户回到桌前拿起手机。W6 提交 PICK_UP，phone_1.location 变为 HELD_BY person_1（v5）。with(phone_1, person_1) 为真，resolve 条件成立，need_1 进入 resolved。提醒发出本身并不会关闭需求。',
+  focus:['vlm','state','agenda'],flows:['gate_vlm','patch','delta'],ver:5,beliefs:[B_ACT('standing'),['phone_1.location','HELD_BY person_1','seen','holds'],B_BAG],changed:['phone_1.location','person_1.activity'],need:'resolved',dec:'—',resp:'已发送 · 等待反馈',bubble:true,
+  msgs:[{type:'StatePatch',grp:'state',route:'M4 → M5 · w_006',body:{window_id:'w_006',trigger:'change',slice_version:4,ops:[{op:'act',type:'PICK_UP',subj:'person_1',obj:'phone_1',ev:['f_000076']},{op:'set',key:'person_1.activity',value:'standing',src:'seen'}]}},
+   {type:'NeedEdge',grp:'decision',route:'触发引擎 → Scheduler',body:{edge_id:'edge_004',need_id:'need_1',edge:'resolved',state_version:5,caused_by:'delta_005'}}],
+  ev:[['00:16.0','W6 提交 · v5：phone_1 HELD_BY person_1 → resolved','state']]},
+ {t:17.2,mark:'反馈',grp:'response',title:'用户反馈：已拿到',
+  desc:'用户点击"已拿到"。M10 把反馈转成 source = user 的补丁，送进同一个 State Actor：phone_1.location 的来源升级为 user_confirmed（v6）。这条记录也用于评测。',
+  focus:['output','state'],flows:['feedback'],ver:6,beliefs:[B_ACT('standing'),['phone_1.location','HELD_BY person_1','user_confirmed','holds'],B_BAG],changed:['phone_1.location'],need:'resolved',dec:'—',resp:'反馈：已拿到',
+  msgs:[{type:'Feedback',grp:'response',route:'M10 → M5',body:{feedback_id:'fb_001',delivery_id:'dl_001',kind:'done',as_patch:{source:'user',ops:[{op:'confirm',key:'phone_1.location',value:{rel:'HELD_BY',ref:'person_1'}},{op:'need_feedback',need_id:'need_1',kind:'done'}]}}}],
+  ev:[['00:17.2','Feedback「已拿到」→ v6 user_confirmed','response']]},
+ {t:18.5,mark:'静默',grp:'video',title:'恢复静默',
+  desc:'没有处于 armed 或 fired 的需求，Gate 回到 4 s 心跳。所有消息都已带着 causation_id 追加进 Event Log，可以从任意快照确定性地重放。',
+  focus:['source','gate','log'],flows:['src_gate','src_speech','log'],ver:6,beliefs:[B_ACT('standing'),['phone_1.location','HELD_BY person_1','user_confirmed','holds'],B_BAG],changed:[],need:'resolved',dec:'—',resp:'待命',
+  msgs:[{type:'LogRecord',grp:'slow',route:'M5 → M11',body:{log_seq:58,kind:'need_edge',msg_id:'edge_004',causation_id:'delta_005',t_event_ms:16000,t_avail_ms:16000,payload:{edge:'resolved',need_id:'need_1'}}}],
+  ev:[['00:18.5','无活跃需求 · 回到 4 s 心跳','video']]}
+];
+const actions=[[2.0,'放下手机'],[9.0,'拿起背包'],[11.0,'走向门口'],[15.0,'取回手机']];
+
+const MODS={
+ source:{role:'解码视频和音频，按运行模式推进会话时钟（live / replay_1x / replay_sim）。',
+  f:[['调用方式','程序：PyAV / ffmpeg；RTSP；M3-Bench 适配器'],['触发','连续运行'],['输入','MP4 文件 / 摄像头流'],['输出','FrameRef（5 FPS，短边 448 px）→ M2；AudioChunk（16 kHz，每块 0.5 s）→ M3'],['内部存储','无；会话元数据写入 sessions 表'],['时延目标','< 50 ms'],['失败降级','断流超过 3 s 告警；“没看到”不能当成状态']]},
+ gate:{role:'维护最近 10 s 的帧缓冲，决定什么时候值得调用一次 VLM，并组装窗口。',
+  f:[['调用方式','程序：64×64 灰度帧差（可选轻量图像向量）'],['触发','focus（armed 时心跳 1.5 s）＞ change（稳定 0.3–0.4 s 后）＞ 语句结束 ＞ heartbeat（4 s）'],['输入','FrameRef；Utterance 结束事件；Focus（M6）'],['输出','WindowRequest{window_id, seq, 2–4 帧, utt_ids, trigger} → M4'],['内部存储','deque（最近 10 s）；入选的帧落盘为 JPEG'],['时延目标','判定 < 20 ms'],['背压','积压超过 3 个时合并 heartbeat；change 与 utterance 窗口不丢']]},
+ speech:{role:'把音频变成带说话人的语句，把人脸变成稳定的身份锚点（P1、P2）。',
+  f:[['调用方式','本地 AI 小模型：VAD + ASR（Whisper / FunASR）+ ERes2NetV2 声纹 + InsightFace 人脸；锚点匹配由程序完成'],['触发','每句话；每个窗口的帧'],['输入','AudioChunk；窗口帧'],['输出','Utterance → M2 / M4；FaceBox（帧上标注 P1）→ M4；AnchorEvent → M5'],['内部存储','anchors 表（质心向量 BLOB）'],['时延目标','语句结束后 0.3–1 s'],['因果','在线增量匹配，不做整段视频的全局聚类']]},
+ vlm:{role:'热路径上唯一的感知调用：看画面和语音，对照当前状态切片，只输出变化（StatePatch）。',
+  f:[['调用方式','AI：快速 VLM + JSON Schema（候选 GPT-5 mini / Claude Haiku 4.5 / Gemini Flash / 自部署 Qwen-VL），由 E1 评测选定并锁定版本'],['子组件','Slice Builder（程序）：选出 ≤ 20 个相关实体，标记 CHECK'],['输入','WindowRequest + StateSlice(v) + Utterance + 带 P1 标签的帧'],['输出','StatePatch{ops: new / set / act / still / gone / unsure / said / link, view} → M5'],['内部存储','patch_cache（按输入哈希缓存，可重放）'],['时延目标','1–2.5 s；2–3 个并发 worker'],['失败降级','超时或 JSON 无效时丢弃，由下一个窗口补上；连续 3 次失败提示“感知降级”']]},
+ state:{role:'唯一能修改状态的组件（单写者）：按序提交 → 校验 → 归约 → 计时器 → Delta，并在同一步里调用触发引擎。',
+  f:[['调用方式','程序：Sequencer + Validator + Reducer + Timers，运行在单个 asyncio actor 中'],['输入','StatePatch（vlm / user / consolidator）、AnchorEvent、Tick（250 ms）'],['输出','StateDelta → M6（同步）；StateSlice → M4；LogRecord → M11'],['数据结构','entities{id→Entity}；beliefs{"实体.属性"→Belief(value, source, status, since, last_support, last_seen, rev)}；by_place；timers'],['过时规则','inertial：交互机会 → stale，区域可见但缺失 → unknown；transient：按 TTL；static：只能由用户纠正'],['时延目标','< 10 ms'],['持久化','每 50 个版本写一次快照；日志加快照可完整重放']]},
+ agenda:{role:'把状态变化变成“要不要行动”：需求模板、条件 DSL、依赖索引、边沿检测、预取与调度。',
+  f:[['调用方式','程序：触发引擎在 M5 的同一步内运行；Scheduler / Prefetcher 是独立任务'],['数据结构','Need{arm, fire, resolve, mode_rule, deps, phase}；dep_index{"phone_1.location"→{need_1}}'],['armed 时','预取 DecisionContext 和 M13 历史，让 M8 预生成草稿，向 M2 发出 Focus'],['fired 时','刷新依赖槽位 → DecisionJob → M7（每个需求 ≤ 1、全局 ≤ 2 在途）'],['输出','NeedEdge、DraftJob、DecisionJob、Focus；汇合 Decision 与草稿后交给 M9'],['时延目标','< 5 ms（预取异步进行）']]},
+ decision:{role:'只在 fired 沿被调用：判断此刻是否值得介入，以及用 WAIT / ASK / REMIND 中的哪一种。',
+  f:[['调用方式','AI：TypeSafe System One · Jev，warranted（noul）+ mode（choice）'],['输入','DecisionContext（≤ 2000 token，与草稿共用同一份快照）'],['输出','Decision{warranted, mode, probs, applied_mode} → M9'],['程序规则','warranted < 0.7 视为 WAIT；mode 超过 mode_cap 时只降级（REMIND → ASK）'],['时延目标','≤ 1 s'],['失败降级','记为 DECISION_UNAVAILABLE，不伪装成 WAIT']]},
+ response:{role:'生成要发出的那句话，并声明它断言了哪些状态（claims）。',
+  f:[['调用方式','AI：GPT-5 mini（结构化输出，流式）+ 模板兜底'],['策略','prefetch_llm：armed 时预生成；fired 后若 mode 一致且依赖未变就直接使用'],['输入','DraftJob{need, context, mode}'],['输出','ResponseDraft{text, claims[key, stated_as], evidence}'],['时延目标','预生成时关键路径为 0；现场生成首字 0.3–1 s，超过 600 ms 改用模板']]},
+ policy:{role:'发送前的最后一道复核，防止发出过期或越权的消息。',
+  f:[['调用方式','程序'],['检查','fire 仍为真、resolve 为假；依赖槽位版本；claims 与信念一致；权限、冷却、限频、去重'],['输入','Decision + ResponseDraft + 当前快照'],['输出','Delivery → M10，或 Blocked(reason)'],['时延目标','< 5 ms']]},
+ output:{role:'展示提醒、收集反馈，并把反馈变成 source = user 的补丁送回 M5。',
+  f:[['调用方式','程序 + UI：FastAPI WebSocket'],['输入','Delivery'],['输出','Feedback{done / not_needed / wrong} → StatePatch(source=user) → M5'],['记录','t_first_visible_ms（用于计算 Event-to-First-Text）']]},
+ log:{role:'所有消息唯一的持久化位置：崩溃恢复、确定性重放、评测。',
+  f:[['调用方式','程序：SQLite WAL，独立 writer 批量写入（每 200 ms 或每 100 条）'],['表','log、snapshots、patch_cache、anchors、traces、episodes'],['恢复','加载最新快照，再重放其后的日志'],['重放实验','固定 VLM 补丁，只替换 Reducer 或模板规则']]},
+ consol:{role:'后台慢环：编译语音中的需求、给出实体合并建议、生成情节摘要。永不阻塞热路径。',
+  f:[['调用方式','AI：较强的通用 LLM（如 GPT-5 / Claude Sonnet 5.5）'],['触发','每 30 s 会话时间；出现 said(request / commitment) 时立即触发'],['输入','新日志、状态摘要、语句'],['输出','StatePatch(source=consolidator: need_upsert / merge) → M5；Episode → M13'],['时延目标','3–15 s（异步）']]},
+ ltm:{role:'回答“以前发生过什么”，为决策上下文提供至多 3 条历史。',
+  f:[['调用方式','程序：SQLite FTS5（可选向量索引）；在 M3-Bench 上可加载 M3-Agent 记忆图作为对照'],['接口','history(entity_ids, before=now, k=3)，只返回 t_avail ≤ now 的情节'],['输入','Episode（M12）'],['输出','History → M6 预取'],['时延目标','< 20 ms'],['与 V1 的关系','Graphiti 移出核心，只作为消融选项']]}
+};
+
+let camera={yaw:.325,elev:.66,zoom:1};
+const initialCamera={...camera};
+let W=0,H=0,dpr=1,worldTime=0,playing=true,speed=1,stamp=0,lastPhase=-1,selected=null,hovered=null,activeTab='run';
+const reducedMotion=window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
+if(reducedMotion)playing=false;
+
+function clamp(x,a,b){return Math.max(a,Math.min(b,x))}
+function lerp(a,b,t){return a+(b-a)*t}
+function getPhase(t){let p=0;for(let i=0;i<phases.length;i++)if(t>=phases[i].t)p=i;return p}
+// 以初始视角计算一次“铺满舞台”的缩放与中心；旋转时保持不变，避免画面跳动。
+const fit={s:50,cx:0,cy:0,oy:0};
+function computeFit(){
+ const cy=Math.cos(initialCamera.yaw),sy=Math.sin(initialCamera.yaw),ce=Math.cos(initialCamera.elev),se=Math.sin(initialCamera.elev);
+ let x0=1e9,x1=-1e9,y0=1e9,y1=-1e9;
+ const add=(x,y,z)=>{const xx=x*cy-z*sy,yy=(x*sy+z*cy)*se-y*ce;x0=Math.min(x0,xx);x1=Math.max(x1,xx);y0=Math.min(y0,yy);y1=Math.max(y1,yy)};
+ for(const n of nodes){for(const a of[-1,1])for(const b of[-1,1])add(n.x+a*n.w/2,0,n.z+b*n.d/2);add(n.x,n.h+n.lab+.3,n.z)}
+ for(const z of zones)for(const [x,zz] of z.pts)add(x,0,zz);
+ const padX=34,padTop=46,padBot=70;
+ fit.s=Math.max(20,Math.min((W-padX*2)/(x1-x0),(H-padTop-padBot)/(y1-y0)));
+ fit.cx=(x0+x1)/2;fit.cy=(y0+y1)/2;fit.oy=padTop+(H-padTop-padBot)/2;
+}
+function currentScale(){return fit.s*camera.zoom}
+function uScale(){return clamp(currentScale()/62,.72,1.25)}
+function project(p){
+ const cy=Math.cos(camera.yaw),sy=Math.sin(camera.yaw),ce=Math.cos(camera.elev),se=Math.sin(camera.elev),s=currentScale();
+ const xx=p.x*cy-p.z*sy, zz=p.x*sy+p.z*cy;
+ return {x:W*.5+(xx-fit.cx)*s,y:fit.oy+(zz*se-p.y*ce-fit.cy)*s,depth:zz*ce+p.y*se};
+}
+function polygon(points,fill,stroke='#d9e1ea',lw=1){ctx.beginPath();let a=project(points[0]);ctx.moveTo(a.x,a.y);for(let i=1;i<points.length;i++){const v=project(points[i]);ctx.lineTo(v.x,v.y)}ctx.closePath();if(fill){ctx.fillStyle=fill;ctx.fill()}if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=lw;ctx.stroke()}}
+function lineScreen(a,b,color,width=1){ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.strokeStyle=color;ctx.lineWidth=width;ctx.stroke()}
+function line3d(points,color,width=1,dash=null){ctx.beginPath();for(let i=0;i<points.length;i++){let q=project(points[i]);if(i===0)ctx.moveTo(q.x,q.y);else ctx.lineTo(q.x,q.y)}ctx.strokeStyle=color;ctx.lineWidth=width;ctx.lineCap='round';ctx.lineJoin='round';if(dash)ctx.setLineDash(dash);ctx.stroke();if(dash)ctx.setLineDash([])}
+function ell(x,y,rx,ry,fill){ctx.beginPath();ctx.ellipse(x,y,Math.max(.01,rx),Math.max(.01,ry),0,0,Math.PI*2);ctx.fillStyle=fill;ctx.fill()}
+function hexToRgb(hex){let s=hex.replace('#','');return [parseInt(s.slice(0,2),16),parseInt(s.slice(2,4),16),parseInt(s.slice(4,6),16)]}
+function blend(hex1,hex2,t){let a=hexToRgb(hex1),b=hexToRgb(hex2);return `rgb(${Math.round(lerp(a[0],b[0],t))},${Math.round(lerp(a[1],b[1],t))},${Math.round(lerp(a[2],b[2],t))})`}
+function rgba(hex,a){const c=hexToRgb(hex);return `rgba(${c[0]},${c[1]},${c[2]},${a})`}
+function roundRect(x,y,w,h,r,fill,stroke,lw=1){ctx.beginPath();ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);ctx.quadraticCurveTo(x+w,y,x+w,y+r);ctx.lineTo(x+w,y+h-r);ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);ctx.lineTo(x+r,y+h);ctx.quadraticCurveTo(x,y+h,x,y+h-r);ctx.lineTo(x,y+r);ctx.quadraticCurveTo(x,y,x+r,y);ctx.closePath();if(fill){ctx.fillStyle=fill;ctx.fill()}if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=lw;ctx.stroke()}}
+function drawBox(cx,base,cz,w,h,d,opt={}){
+ const color=opt.color||'#E7EDF7',light=opt.light??.90,stroke=opt.stroke||'#ced9e5',shadow=!!opt.shadow;
+ if(shadow){let a=project(P(cx,base-.1,cz));ctx.save();ctx.filter='blur(13px)';ell(a.x+3,a.y+11,w*currentScale()*.53,d*currentScale()*.33,'rgba(67,83,108,.14)');ctx.restore()}
+ let x0=cx-w/2,x1=cx+w/2,y0=base,y1=base+h,z0=cz-d/2,z1=cz+d/2;
+ let c={a:P(x0,y0,z0),b:P(x1,y0,z0),c:P(x1,y0,z1),d:P(x0,y0,z1),A:P(x0,y1,z0),B:P(x1,y1,z0),C:P(x1,y1,z1),D:P(x0,y1,z1)};
+ polygon([c.b,c.c,c.C,c.B],blend(color,'#8495ad',.19*light),stroke,.65);
+ polygon([c.c,c.d,c.D,c.C],blend(color,'#94a7c1',.1*light),stroke,.75);
+ polygon([c.A,c.B,c.C,c.D],blend(color,'#ffffff',.68),stroke,1);
+ if(opt.glow){ctx.save();ctx.globalAlpha=opt.glow*.22;polygon([c.A,c.B,c.C,c.D],opt.glowColor||color,null);ctx.restore()}
+ return c;
+}
+function floatingDot(p,r,color,halo=0){const u=uScale();r*=u;let q=project(p);if(halo){ctx.save();ctx.globalAlpha=halo;let rg=ctx.createRadialGradient(q.x,q.y,0,q.x,q.y,r*3.7);rg.addColorStop(0,color);rg.addColorStop(1,'transparent');ctx.fillStyle=rg;ctx.fillRect(q.x-r*4,q.y-r*4,r*8,r*8);ctx.restore()}ell(q.x,q.y,r,r*.95,color);ell(q.x-r*.23,q.y-r*.23,r*.3,r*.3,'rgba(255,255,255,.74)')}
+function catmull(points,t){
+ let seg=Math.min(points.length-2,Math.floor(t*(points.length-1)));let f=t*(points.length-1)-seg;
+ let p0=points[Math.max(0,seg-1)],p1=points[seg],p2=points[seg+1],p3=points[Math.min(points.length-1,seg+2)];
+ const calc=k=>.5*((2*p1[k])+(-p0[k]+p2[k])*f+(2*p0[k]-5*p1[k]+4*p2[k]-p3[k])*f*f+(-p0[k]+3*p1[k]-3*p2[k]+p3[k])*f*f*f);
+ return P(calc('x'),calc('y'),calc('z'));
+}
+for(const c of curves){c.samples=[];for(let j=0;j<=48;j++)c.samples.push(catmull(c.pts,j/48))}
+function hull(pts){
+ pts=pts.slice().sort((a,b)=>a.x-b.x||a.y-b.y);
+ const cross=(o,a,b)=>(a.x-o.x)*(b.y-o.y)-(a.y-o.y)*(b.x-o.x),lo=[],up=[];
+ for(const p of pts){while(lo.length>=2&&cross(lo[lo.length-2],lo[lo.length-1],p)<=0)lo.pop();lo.push(p)}
+ for(let i=pts.length-1;i>=0;i--){const p=pts[i];while(up.length>=2&&cross(up[up.length-2],up[up.length-1],p)<=0)up.pop();up.push(p)}
+ up.pop();lo.pop();return lo.concat(up);
+}
+function inPoly(x,y,poly){let c=false;for(let i=0,j=poly.length-1;i<poly.length;j=i++){const a=poly[i],b=poly[j];if((a.y>y)!==(b.y>y)&&x<(b.x-a.x)*(y-a.y)/(b.y-a.y)+a.x)c=!c}return c}
+
+function drawFloor(){
+ for(let x=-8.6;x<=9.8;x+=1.15)line3d([P(x,-.15,-4.7),P(x,-.15,4.5)],'rgba(215,225,236,.2)',.75);
+ for(let z=-4.6;z<=4.5;z+=1.2)line3d([P(-8.6,-.15,z),P(9.8,-.15,z)],'rgba(215,225,236,.2)',.75);
+ for(const zn of zones){
+  const y=-.14,pts=zn.pts.map(([x,z])=>P(x,y,z));
+  ctx.save();ctx.setLineDash([5,5]);polygon(pts,zn.layer==='L2'?'rgba(239,236,250,.42)':zn.layer==='L0'?'rgba(234,242,251,.45)':'rgba(246,248,251,.5)','rgba(176,190,206,.55)',1);ctx.restore();
+ }
+}
+function drawZoneLabels(){
+ const u=uScale();ctx.font=`650 ${10.5*u}px ${FONT}`;ctx.textAlign='left';ctx.textBaseline='middle';
+ for(const zn of zones){
+  const q=project(P(zn.lx,-.14,zn.lz)),txt=LAYER[zn.layer],w=ctx.measureText(txt).width+12*u;
+  roundRect(q.x-6*u,q.y-9*u,w,18*u,6*u,'rgba(255,255,255,.82)','rgba(196,207,220,.7)');
+  ctx.fillStyle='#8f9cab';ctx.fillText(txt,q.x,q.y+.5);
+ }
+}
+const isFlowOn=(ph,id)=>phases[ph].flows.includes(id);
+function drawFlows(t,ph){
+ for(const c of curves){
+  const on=isFlowOn(ph,c.id),steady=STEADY.has(c.id),col=GRP[c.grp];
+  line3d(c.samples,'rgba(213,224,235,.5)',3.4);
+  line3d(c.samples,on?blend(col,'#e3ebf4',.18):steady?blend(col,'#e9eef4',.55):'#e4e9ef',on?1.7:1.1,c.id==='focus'||c.id==='consol_state'?[4,4]:null);
+  if(!on&&!steady)continue;
+  const count=on?3:1,u0=uScale();
+  for(let k=0;k<count;k++){
+   const u=((t*c.rate*.2+k/count)%1+1)%1,pos=catmull(c.pts,u),q=project(pos),prev=project(catmull(c.pts,Math.max(.005,u-.025)));
+   ctx.save();ctx.globalAlpha=on?.14:.08;ell(q.x,q.y,8.2*u0,7*u0,col);ctx.restore();
+   lineScreen(prev,q,blend(col,'#fff',.15),3.1*u0);
+   const s=on?4.6*u0:3.6*u0;roundRect(q.x-s,q.y-s,s*2,s*2,2.6*u0,'#ffffff',col);roundRect(q.x-s*.62,q.y-s*.62,s*1.24,s*1.24,1.5*u0,col,null);
+  }
+ }
+}
+function drawFlowLabels(ph){
+ const u=uScale();ctx.font=`650 ${10*u}px ${FONT}`;ctx.textBaseline='middle';ctx.textAlign='center';
+ for(const c of curves){
+  if(!isFlowOn(ph,c.id))continue;
+  const q=project(catmull(c.pts,c.lu??.5)),tw=ctx.measureText(c.msg).width,w=tw+14*u,h=17*u,oy=(c.lo??-11)*u;
+  ctx.save();ctx.shadowColor='rgba(53,72,98,.12)';ctx.shadowBlur=8;ctx.shadowOffsetY=2;
+  roundRect(q.x-w/2,q.y-h/2+oy,w,h,6*u,'rgba(255,255,255,.95)',rgba(GRP[c.grp],.85));ctx.restore();
+  ctx.fillStyle=blend(GRP[c.grp],'#2c3d52',.55);ctx.fillText(c.msg,q.x,q.y+oy);
+ }
+}
+
+const deco={
+ camera(n,t){
+  const b=n.h,u=uScale();
+  drawBox(n.x-.12,b+.01,n.z-.05,.76,.37,.56,{color:'#bcd0ed',stroke:'#b3c9e4'});
+  drawBox(n.x+.24,b+.14,n.z+.10,.24,.19,.15,{color:'#dae6f6',stroke:'#c4d5e8'});
+  const p=project(P(n.x-.18,b+.395,n.z-.02));
+  ell(p.x,p.y,13*u,9*u,'#547faa');ell(p.x,p.y,9*u,6.3*u,'#d4e6f6');ell(p.x,p.y,5.4*u,4*u,'#689dc7');ell(p.x-1.4*u,p.y-1.8*u,2.1*u,1.4*u,'#fff');
+  floatingDot(P(n.x+.54,b+.05,n.z-.62),2.4,'#E79584',.3);
+ },
+ gate(n,t,ph){
+  const fire=isFlowOn(ph,'gate_vlm')||isFlowOn(ph,'focus');
+  for(let i=0;i<4;i++){
+   const x=n.x-.42+i*.28,active=i===Math.floor(t*1.6)%4,h=.22+(active?.12:0)+.02*Math.sin(t*1.9-i*.8);
+   drawBox(x,n.h+.06,n.z-.04,.18,h,.86,{color:active?(fire?'#f2c489':'#a6c7ea'):'#d6e6f7',stroke:active?(fire?'#e7b675':'#a5bfdc'):'#c5d7eb'});
+  }
+ },
+ wave(n,t,ph,focus){
+  for(let i=0;i<7;i++){
+   const x=n.x-.48+i*.16,amp=focus?.2:.12,h=.06+amp*Math.abs(Math.sin(t*3.1+i*1.3))*(.6+.4*Math.sin(t*.7+i));
+   drawBox(x,n.h+.05,n.z,.09,h,.5,{color:focus?'#efc89e':'#f2dcc4',stroke:'#e4c19c'});
+  }
+ },
+ grid(n,t,ph,focus){
+  drawBox(n.x,n.h+.01,n.z,.89,.17,.91,{color:'#f0d9c0',stroke:'#e3c6a6'});
+  for(let i=0;i<3;i++)for(let j=0;j<3;j++){
+   const hi=Math.sin(t*(focus?5.2:2)+i*1.8+j*2.2)>(focus?.1:.6);
+   drawBox(n.x-.27+i*.265,n.h+.2,n.z-.27+j*.265,.17,.06,.17,{color:hi?'#e9b47c':'#f6ebde',stroke:'#e6d0b8'});
+  }
+  if(focus){const pos=project(P(n.x,n.h+.37,n.z)),u=uScale();ctx.save();ctx.strokeStyle='rgba(214,150,86,.32)';ctx.lineWidth=1.2;
+   for(let i=0;i<3;i++){const r=(20+i*10+Math.sin(t*1.8-i*.4)*2)*u;ctx.beginPath();ctx.arc(pos.x,pos.y,r,Math.PI*1.07,Math.PI*1.85);ctx.stroke()}ctx.restore()}
+ },
+ state(n,t,ph){
+  const s=phases[ph];
+  drawBox(n.x,n.h,n.z,1.87,.06,1.75,{color:'#e1e8f4',stroke:'#cfd9e8'});
+  const rows=[['person_1','#9fb2df'],['phone_1','#b7a8df'],['backpack_1','#95bdb9']];
+  const ents=new Set(s.beliefs.map(b=>b[0].split('.')[0])),ch=new Set(s.changed.map(k=>k.split('.')[0]));
+  const since=(worldTime-s.t)/(s.rate||1),glow=since<1.4?Math.abs(Math.sin(since*6)):0;
+  rows.forEach(([e,col],r)=>{
+   const exists=ents.has(e),act=ch.has(e)&&glow>.05;
+   for(let c=0;c<4;c++){
+    const xx=n.x-.65+c*.43,zz=n.z-.5+r*.5,hh=exists?.16+(c%3)*.045:.035,rise=act?glow*.12:0;
+    drawBox(xx,n.h+.06+rise,zz,.31,hh,.32,{color:act?'#F4CC87':exists?col:'#eef1f6',stroke:act?'#E9B772':exists?'#c7c3de':'#e1e6ee'});
+   }
+  });
+  ctx.save();ctx.globalAlpha=.55;
+  line3d([P(n.x-1.0,n.h+.11,n.z-.93),P(n.x-1.0,n.h+.66,n.z-.93),P(n.x-.45,n.h+.66,n.z-.93)],'#b9b6e0',.85);
+  line3d([P(n.x+.96,n.h+.11,n.z+.9),P(n.x+.96,n.h+.67,n.z+.9),P(n.x+.56,n.h+.67,n.z+.9)],'#b9b6e0',.85);
+  ctx.restore();
+ },
+ agenda(n,t,ph){
+  drawBox(n.x,n.h,n.z,1.3,.05,1.1,{color:'#e3eaf4',stroke:'#cfd9e6'});
+  const cur=NEED_PHASES.indexOf(phases[ph].need);
+  for(let i=0;i<6;i++){
+   const x=n.x-.55+i*.22,now=i===cur,past=cur>=0&&i<cur,h=now?.2+.04*Math.sin(t*5):past?.1:.05;
+   drawBox(x,n.h+.05,n.z,.16,h,.62,{color:now?'#f2c489':past?'#b9cfe8':'#eef2f7',stroke:now?'#e3ad6c':'#d3dde9'});
+  }
+ },
+ dial(n,t,ph){
+  const go=!!phases[ph].decActive,u=uScale();
+  drawBox(n.x,n.h+.02,n.z,.99,.16,.91,{color:go?'#f2c489':'#efdfcf',stroke:go?'#e8b476':'#e2cfbb'});
+  const c=project(P(n.x,n.h+.31,n.z));
+  ctx.save();ctx.strokeStyle=go?'rgba(196,131,55,.85)':'rgba(168,133,103,.5)';ctx.lineWidth=2.2*u;
+  ctx.beginPath();ctx.arc(c.x,c.y,13*u,0,Math.PI*2);ctx.stroke();
+  ctx.fillStyle=go?'#d99b55':'#c8b49c';ctx.beginPath();ctx.arc(c.x,c.y,4.5*u,0,Math.PI*2);ctx.fill();
+  const a=t*(go?4:.5);ctx.beginPath();ctx.arc(c.x,c.y,18*u,a,a+1.7);ctx.stroke();ctx.restore();
+  if(go)floatingDot(P(n.x,n.h+.42,n.z-.35),3,'#e0aa70',.23);
+ },
+ bars(n,t,ph){
+  const s=phases[ph],active=!!s.respActive,ready=s.need==='armed'&&!active;
+  for(let i=0;i<3;i++){
+   const h=.13+(active?.06*Math.sin(t*4+i*.8):0);
+   drawBox(n.x-.41+i*.4,n.h+.04,n.z-.04,.31,.25+h,.86,{color:active?'#f0c99c':ready?'#e9d8c4':'#efe5da',stroke:active?'#e2b47f':'#e2d2bf'});
+  }
+  if(active){const q=project(P(n.x,n.h+.38,n.z)),r=(27+Math.sin(t*5)*2)*uScale();ctx.save();ctx.strokeStyle='rgba(214,150,86,.22)';ctx.lineWidth=2;ctx.beginPath();ctx.arc(q.x,q.y,r,0,Math.PI*2);ctx.stroke();ctx.restore()}
+  if(ready||s.need==='fired'){floatingDot(P(n.x+.5,n.h+.5,n.z-.35),2.6,'#7fc1b1',.25)}
+ },
+ pillars(n,t,ph){
+  const st=phases[ph].policy||'idle',col=st==='pass'?'#a6dcc7':st==='check'?'#f2c489':'#d6e2f0';
+  drawBox(n.x-.3,n.h,n.z,.16,.38,.6,{color:'#dfe8f4',stroke:'#c9d6e6'});
+  drawBox(n.x+.3,n.h,n.z,.16,.38,.6,{color:'#dfe8f4',stroke:'#c9d6e6'});
+  drawBox(n.x,n.h+.38,n.z,.76,.07,.6,{color:col,stroke:'#cbd6e3'});
+  if(st!=='idle')floatingDot(P(n.x,n.h+.62,n.z),2.6,st==='pass'?'#5fb39a':'#e0a86c',.28);
+ },
+ output(n,t,ph){
+  const s=phases[ph],on=!!s.bubble,u=uScale();
+  drawBox(n.x,n.h+.04,n.z,.99,.2,.78,{color:on?'#b8decd':'#d3e8df',stroke:'#b3d3c4'});
+  for(let i=0;i<3;i++){const p=project(P(n.x-.31,n.h+.31,n.z-.2+i*.19));ctx.fillStyle=on?'#69aa94':'#aacabc';ctx.fillRect(p.x-13*u,p.y,(26-i*3)*u,2.5*u)}
+ },
+ stack(n,t,ph,focus){
+  for(let i=0;i<3;i++)drawBox(n.x,n.h+.02+i*.11,n.z,.9-i*.08,.07,.7-i*.06,{color:focus&&i===2?'#d5caf5':'#e6e1f7',stroke:'#d2cbec'});
+ },
+ ring(n,t,ph,focus){
+  drawBox(n.x,n.h+.01,n.z,.8,.12,.66,{color:'#f0dcc6',stroke:'#e3c6a6'});
+  const c=project(P(n.x,n.h+.3,n.z)),u=uScale();
+  ctx.save();ctx.strokeStyle=focus?'rgba(214,150,86,.8)':'rgba(190,160,130,.45)';ctx.lineWidth=2*u;
+  ctx.beginPath();ctx.ellipse(c.x,c.y,15*u,7*u,0,0,Math.PI*2);ctx.stroke();
+  const a=t*(focus?2.4:.6);ctx.beginPath();ctx.ellipse(c.x,c.y,15*u,7*u,0,a,a+1.6);ctx.strokeStyle=focus?'#d18d47':'#c4a888';ctx.lineWidth=3*u;ctx.stroke();ctx.restore();
+ }
+};
+
+function drawNode(n,t,ph){
+ const k=KIND[n.kind],focus=phases[ph].focus.includes(n.id),sel=selected===n.id,hov=hovered===n.id;
+ if(sel||hov){
+  const m=.22,y=-.13,pts=[P(n.x-n.w/2-m,y,n.z-n.d/2-m),P(n.x+n.w/2+m,y,n.z-n.d/2-m),P(n.x+n.w/2+m,y,n.z+n.d/2+m),P(n.x-n.w/2-m,y,n.z+n.d/2+m)];
+  polygon(pts,rgba(k.accent,sel?.16:.08),rgba(k.accent,sel?.85:.5),sel?1.6:1);
+ }
+ const pulse=focus?.55+.45*Math.sin(t*4.2):0;
+ const c=drawBox(n.x,0,n.z,n.w,n.h,n.d,{color:k.base,stroke:k.stroke,shadow:true,glow:focus?.6+.35*pulse:0,glowColor:k.accent});
+ deco[n.deco](n,t,ph,focus);
+ if(focus){ctx.save();ctx.globalAlpha=.35+.35*pulse;polygon([c.A,c.B,c.C,c.D],null,k.accent,1.6);ctx.restore()}
+ const top=n.h+.42,pick=[c.a,c.b,c.c,c.d,P(c.a.x,top,c.a.z),P(c.b.x,top,c.b.z),P(c.c.x,top,c.c.z),P(c.d.x,top,c.d.z)].map(project);
+ n.hull=hull(pick);
+}
+function drawNodeLabel(n,ph){
+ const k=KIND[n.kind],u=uScale(),focus=phases[ph].focus.includes(n.id);
+ const p=project(P(n.x,n.h+n.lab,n.z)),chip=`${n.code} · ${k.label}`;
+ ctx.font=`700 ${9*u}px ${FONT}`;const cw=ctx.measureText(chip).width+10*u;
+ ctx.font=`${focus?720:650} ${11.5*u}px ${FONT}`;const tw=ctx.measureText(n.title).width;
+ const total=cw+5*u+tw,x0=p.x-total/2,y=p.y;
+ roundRect(x0,y-8*u,cw,16*u,5*u,k.chipBg,null);
+ ctx.font=`700 ${9*u}px ${FONT}`;ctx.fillStyle=k.chipInk;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(chip,x0+cw/2,y+.5);
+ ctx.font=`${focus?720:650} ${11.5*u}px ${FONT}`;ctx.fillStyle=focus?'#22344a':'#4f6278';ctx.textAlign='left';ctx.fillText(n.title,x0+cw+5*u,y+.5);
+ n.labelRect={x:x0-4,y:y-11*u,w:total+8,h:22*u};
+}
+function drawBubble(ph){
+ if(!phases[ph].bubble)return;
+ const n=byId.output,u=uScale(),p=project(P(n.x,0,n.z+n.d/2+.15)),text='你的手机好像还在桌上，要带上吗？';
+ ctx.font=`600 ${11.5*u}px ${FONT}`;const w=ctx.measureText(text).width+26*u,h=34*u,x0=Math.min(p.x-w*.7,W-w-12),y0=p.y+12*u;
+ ctx.save();ctx.shadowColor='rgba(53,89,72,.14)';ctx.shadowBlur=18;ctx.shadowOffsetY=6;
+ roundRect(x0,y0,w,h,12*u,'#ffffff','#cfe5d9');ctx.restore();
+ ctx.fillStyle='#5f8f7e';ctx.textAlign='left';ctx.textBaseline='middle';ctx.fillText(text,x0+13*u,y0+h/2);
+ ctx.beginPath();ctx.moveTo(p.x-7*u,y0+.5);ctx.lineTo(p.x,y0-8*u);ctx.lineTo(p.x+7*u,y0+.5);ctx.closePath();ctx.fillStyle='#fff';ctx.fill();
+}
+let drawOrder=[];
+function drawScene(){
+ if(!W||!H)return;
+ ctx.clearRect(0,0,W,H);
+ // 动画用真实时钟，避免慢放阶段画面冻结；暂停时固定在剧情时间。
+ const ph=getPhase(worldTime),t=playing?performance.now()/1000:worldTime;
+ drawFloor();
+ drawFlows(t,ph);
+ drawOrder=nodes.map(n=>({n,depth:project(P(n.x,0,n.z)).depth})).sort((a,b)=>a.depth-b.depth).map(o=>o.n);
+ for(const n of drawOrder)drawNode(n,t,ph);
+ drawZoneLabels();
+ for(const n of drawOrder)drawNodeLabel(n,ph);
+ drawFlowLabels(ph);
+ drawBubble(ph);
+}
+
+function compact(o){
+ if(o===null||typeof o!=='object')return JSON.stringify(o);
+ if(Array.isArray(o))return '['+o.map(compact).join(', ')+']';
+ return '{'+Object.entries(o).map(([k,v])=>JSON.stringify(k)+': '+compact(v)).join(', ')+'}';
+}
+function fmt(o,ind=''){
+ const s=compact(o);
+ if(s.length<=52||ind.length>=4||o===null||typeof o!=='object')return s;
+ if(Array.isArray(o))return '[\n'+o.map(v=>ind+'  '+fmt(v,ind+'  ')).join(',\n')+'\n'+ind+']';
+ return '{\n'+Object.entries(o).map(([k,v])=>ind+'  '+JSON.stringify(k)+': '+fmt(v,ind+'  ')).join(',\n')+'\n'+ind+'}';
+}
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+function hl(json){
+ return esc(json).replace(/("(?:[^"\\]|\\.)*")(\s*:)?|\b(true|false|null)\b|-?\b\d+(?:\.\d+)?\b/g,(m,str,colon,kw)=>{
+  if(str)return colon?`<span class="j-k">${str}</span>${colon}`:`<span class="j-s">${str}</span>`;
+  return `<span class="j-n">${m}</span>`;
+ });
+}
+function timeFormat(t){const m=Math.floor(t/60),s=t-m*60;return String(m).padStart(2,'0')+':'+s.toFixed(1).padStart(4,'0')}
+
+function renderRunPanel(ph){
+ const s=phases[ph];
+ $('phaseTitle').textContent=s.title;
+ $('phaseTitle').style.color=s.grp==='decision'?'#986e44':s.grp==='response'?'#3f7f6c':'#293d52';
+ $('phaseDesc').textContent=s.desc;
+ $('ver').textContent=s.ver;
+ $('msgCount').textContent=s.msgs.length>1?`${s.msgs.length} 条`:'';
+ $('msgs').innerHTML=s.msgs.map(m=>`<div class="msg-block"><div class="msg-top"><span class="msg-type"><i style="background:${GRP[m.grp]}"></i>${esc(m.type)}</span><span class="msg-route">${esc(m.route)}</span></div><pre class="msg">${hl(fmt(m.body))}</pre></div>`).join('');
+ const ch=new Set(s.changed);
+ $('beliefs').innerHTML=s.beliefs.length?s.beliefs.map(([k,v,src,st])=>`<tr class="${ch.has(k)?'changed':''}"><td class="key">${esc(k)}</td><td>${esc(v)}</td><td><span class="tag t-${src}">${esc(SRC_LABEL[src]||src)}</span></td><td><span class="tag t-${st}">${esc(st)}</span></td></tr>`).join(''):'<tr class="empty"><td colspan="4">尚无信念 · 等待第一个补丁</td></tr>';
+ const cur=NEED_PHASES.indexOf(s.need);
+ $('needPhases').innerHTML=cur<0?'<div class="need-none">尚未实例化（需要先观察到 phone_1 放在某处）</div>':'<div class="need-phases">'+NEED_PHASES.map((p,i)=>`<span class="np ${i===cur?'now':i<cur?'past':''}">${p}</span>`).join('')+'</div>';
+ $('decision').textContent=s.dec;$('decision').className=s.decActive?'hot':'';
+ $('response').textContent=s.resp;$('response').className=s.respActive||s.bubble?'hot':'';
+ const evs=[];for(let i=0;i<=ph;i++)for(const e of phases[i].ev)evs.push(e);
+ $('events').innerHTML=evs.slice(-6).reverse().map((e,i)=>`<div class="event-row ${i>2?'old':''}"><i style="background:${GRP[e[2]]}"></i><span class="event-time">${e[0]}</span><span>${esc(e[1])}</span></div>`).join('');
+ if(activeTab==='mod')renderModPanel();
+}
+function linkButton(c,dir){
+ const other=byId[dir==='in'?c.from:c.to];
+ return `<button data-goto="${other.id}"><i style="background:${GRP[c.grp]}"></i>${dir==='in'?'←':'→'} ${other.code} ${esc(other.name||other.title)}<em>${esc(c.msg)}</em></button>`;
+}
+function renderModPanel(){
+ const box=$('tab-mod');
+ if(!selected||!byId[selected]){
+  box.innerHTML=['L0','L1','L2'].map(L=>`<div class="mod-index-group"><div class="mod-index-title">${LAYER[L]}</div>`+nodes.filter(n=>n.layer===L).map(n=>`<button class="mod-link" data-goto="${n.id}"><span class="kchip k-${n.kind}">${n.code} · ${KIND[n.kind].label}</span>${esc(n.name||n.title)}<span class="role">${esc(MODS[n.id].role)}</span></button>`).join('')+'</div>').join('');
+  return;
+ }
+ const n=byId[selected],m=MODS[n.id],ph=getPhase(worldTime),s=phases[ph];
+ const ins=curves.filter(c=>c.to===n.id),outs=curves.filter(c=>c.from===n.id);
+ const live=s.focus.includes(n.id),liveFlows=curves.filter(c=>s.flows.includes(c.id)&&(c.from===n.id||c.to===n.id)).map(c=>c.msg);
+ box.innerHTML=`<div class="mod-chips"><span class="kchip k-${n.kind}">${n.code} · ${KIND[n.kind].label}</span><span class="chip">${LAYER[n.layer]}</span><button class="back-btn" data-goto="">← 模块索引</button></div>
+  <div class="mod-name">${esc(n.name||n.title)}</div><p class="mod-role">${esc(m.role)}</p>
+  <dl class="fields">${m.f.map(([a,b])=>`<div><dt>${esc(a)}</dt><dd>${esc(b)}</dd></div>`).join('')}</dl>
+  <div class="sec"><div class="sec-head"><span>上游 / 下游消息</span><span class="aux">点击跳转</span></div><div class="io">${ins.map(c=>linkButton(c,'in')).join('')}${outs.map(c=>linkButton(c,'out')).join('')}</div></div>
+  <div class="mod-now" ${live?'':'hidden'}>当前阶段「${esc(s.title)}」中活跃${liveFlows.length?'，传递：'+esc(liveFlows.join('、')):''}</div>`;
+}
+function setTab(tab){
+ activeTab=tab;
+ document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab));
+ $('tab-run').classList.toggle('hidden',tab!=='run');$('tab-mod').classList.toggle('hidden',tab!=='mod');
+ if(tab==='mod')renderModPanel();
+}
+function select(id){selected=id&&byId[id]?id:null;setTab('mod');drawScene()}
+document.querySelectorAll('.tab-btn').forEach(b=>b.addEventListener('click',()=>setTab(b.dataset.tab)));
+$('tab-mod').addEventListener('click',e=>{const b=e.target.closest('[data-goto]');if(b)select(b.dataset.goto)});
+
+const tl=$('tl');
+function buildTimeline(){
+ const pct=t=>(t/DURATION*100).toFixed(3)+'%';
+ let html='<div class="tl-axis" id="tlAxis"></div><div class="tl-fill" id="tlFill"></div>';
+ for(const [t,txt] of actions)html+=`<div class="tl-act" style="left:${pct(t)}">${txt}</div>`;
+ phases.forEach((s,i)=>{
+  html+=`<div class="tl-mark" data-i="${i}" style="left:${pct(s.t)};--c:${GRP[s.grp]}" title="${esc(timeFormat(s.t)+' '+s.title)}"></div>`;
+  html+=`<div class="tl-label ${i%2?'row1':''}" data-i="${i}" style="left:${pct(s.t)}">${esc(s.mark)}</div>`;
+ });
+ html+='<div class="tl-head" id="tlHead"></div>';
+ tl.innerHTML=html;
+ tl.addEventListener('click',e=>{
+  const m=e.target.closest('[data-i]');
+  if(m){seek(phases[+m.dataset.i].t);return}
+  if(e.target.id==='tlAxis'){const r=tl.getBoundingClientRect();seek(clamp((e.clientX-r.left)/r.width,0,.999)*DURATION)}
+ });
+}
+function updateTimeline(ph){
+ const p=(worldTime/DURATION*100).toFixed(3)+'%';
+ $('tlFill').style.width=p;$('tlHead').style.left=p;
+ tl.querySelectorAll('.tl-mark').forEach(el=>{const i=+el.dataset.i;el.classList.toggle('now',i===ph);el.classList.toggle('done',i<ph)});
+ tl.querySelectorAll('.tl-label').forEach(el=>el.classList.toggle('now',+el.dataset.i===ph));
+}
+function updateUI(force=false){
+ const ph=getPhase(worldTime),s=phases[ph];
+ $('clock').textContent=timeFormat(worldTime);
+ const slow=(s.rate||1)<1&&playing;$('slowBadge').hidden=!slow;if(slow)$('slowBadge').textContent=`慢放 ×${s.rate}`;
+ updateTimeline(ph);
+ if(ph===lastPhase&&!force)return;
+ lastPhase=ph;renderRunPanel(ph);
+}
+function seek(t){worldTime=clamp(t,0,DURATION-.001);lastPhase=-1;updateUI(true);drawScene()}
+function step(dir){setPlayState(false);const ph=getPhase(worldTime);seek(phases[clamp(ph+dir,0,phases.length-1)].t)}
+function setPlayState(next){playing=next;$('playText').textContent=playing?'暂停':'播放';$('playIcon').innerHTML=playing?'<rect x="4" y="3" width="3" height="10" rx=".9"/><rect x="9" y="3" width="3" height="10" rx=".9"/>':'<path d="M4 2.6a.65.65 0 0 1 .97-.57l8.4 5.39a.68.68 0 0 1 0 1.16l-8.4 5.39A.65.65 0 0 1 4 13.4z"/>';}
+$('playBtn').addEventListener('click',()=>setPlayState(!playing));
+$('stepBtn').addEventListener('click',()=>step(1));
+$('prevBtn').addEventListener('click',()=>step(-1));
+$('resetBtn').addEventListener('click',()=>{seek(0);setPlayState(true)});
+$('viewBtn').addEventListener('click',()=>{camera={...initialCamera};drawScene()});
+$('speed').addEventListener('change',e=>{speed=Number(e.target.value)||1});
+window.addEventListener('keydown',e=>{
+ if(e.target.closest&&e.target.closest('select,input,textarea'))return;
+ if(e.code==='Space'){e.preventDefault();setPlayState(!playing)}
+ else if(e.key==='ArrowRight')step(1);else if(e.key==='ArrowLeft')step(-1);
+});
+
+function pickNode(x,y){
+ for(let i=drawOrder.length-1;i>=0;i--){const n=drawOrder[i],r=n.labelRect;
+  if(r&&x>=r.x&&x<=r.x+r.w&&y>=r.y&&y<=r.y+r.h)return n.id;
+  if(n.hull&&inPoly(x,y,n.hull))return n.id}
+ return null;
+}
+let press=null;
+canvas.addEventListener('pointerdown',e=>{press={x:e.clientX,y:e.clientY,lx:e.clientX,ly:e.clientY,moved:false};canvas.setPointerCapture(e.pointerId)});
+canvas.addEventListener('pointermove',e=>{
+ const r=canvas.getBoundingClientRect();
+ if(press){
+  if(Math.hypot(e.clientX-press.x,e.clientY-press.y)>4)press.moved=true;
+  if(press.moved){canvas.classList.add('dragging');camera.yaw=clamp(camera.yaw+(e.clientX-press.lx)*.0033,-.28,.82);camera.elev=clamp(camera.elev+(e.clientY-press.ly)*.0024,.28,1.2);press.lx=e.clientX;press.ly=e.clientY;drawScene()}
+  return;
+ }
+ const id=pickNode(e.clientX-r.left,e.clientY-r.top);
+ if(id!==hovered){hovered=id;canvas.classList.toggle('pointing',!!id);drawScene()}
+});
+function endPress(e){
+ if(press&&!press.moved&&e.type==='pointerup'){const r=canvas.getBoundingClientRect(),id=pickNode(e.clientX-r.left,e.clientY-r.top);if(id)select(id)}
+ press=null;canvas.classList.remove('dragging');
+}
+canvas.addEventListener('pointerup',endPress);canvas.addEventListener('pointercancel',endPress);
+canvas.addEventListener('pointerleave',()=>{if(hovered){hovered=null;canvas.classList.remove('pointing');drawScene()}});
+canvas.addEventListener('wheel',e=>{e.preventDefault();camera.zoom=clamp(camera.zoom*(e.deltaY<0?1.07:.93),.6,1.7);drawScene()},{passive:false});
+function resize(){const rect=canvas.getBoundingClientRect();W=rect.width;H=rect.height;computeFit();dpr=Math.min(window.devicePixelRatio||1,2);canvas.width=Math.round(W*dpr);canvas.height=Math.round(H*dpr);ctx.setTransform(dpr,0,0,dpr,0,0);drawScene()}
+new ResizeObserver(resize).observe(canvas);window.addEventListener('resize',resize);
+function loop(now){
+ if(!stamp)stamp=now;const dt=Math.min((now-stamp)/1000,.07);stamp=now;
+ if(playing){const ph=getPhase(worldTime);worldTime+=dt*speed*(phases[ph].rate||1);if(worldTime>=DURATION){worldTime=0;lastPhase=-1}updateUI()}
+ drawScene();requestAnimationFrame(loop);
+}
+
+buildTimeline();
+const qs=new URLSearchParams(location.search);
+if(qs.has('t'))worldTime=clamp(parseFloat(qs.get('t'))||0,0,DURATION-.001);
+if(qs.get('paused')==='1')playing=false;
+if(qs.has('speed'))speed=Number(qs.get('speed'))||1;
+setPlayState(playing);
+if(qs.has('node'))select(qs.get('node'));else if(qs.get('tab')==='mod')setTab('mod');
+resize();updateUI(true);requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>

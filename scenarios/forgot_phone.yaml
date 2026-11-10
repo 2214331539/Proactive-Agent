@@ -1,0 +1,43 @@
+# 设计文档 §7.3 / proactive_video_3d_v2.html 的 20 秒剧情：放下手机 → 拿起背包 → 走向门口 → 提醒 → 取回 → 反馈
+name: forgot_phone
+duration_s: 20
+vlm_latency_ms: 1100
+default_view: {visible_places: [desk_1, door_1], persons_visible: [person_1], quality: clear}
+changes:  # 合成画面的色块变化，让 Gate 的帧差在动作时刻自然触发
+  - {t_ms: 2000, box: [0, 0, 224, 126], color: [255, 255, 255]}
+  - {t_ms: 9000, box: [224, 0, 448, 126], color: [0, 0, 0]}
+  - {t_ms: 11000, box: [0, 126, 224, 252], color: [255, 255, 255]}
+  - {t_ms: 15000, box: [0, 0, 224, 126], color: [128, 128, 128]}
+observations:
+  - t_ms: 300
+    view: {visible_places: [n2, n3], persons_visible: [n1]}
+    ops:
+      - {op: new, tmp: n1, type: PERSON, cls: person, desc: 灰色卫衣, label: P1}
+      - {op: new, tmp: n2, type: PLACE, cls: desk, desc: 木桌}
+      - {op: new, tmp: n3, type: PLACE, cls: door, desc: 出口}
+      - {op: set, key: n1.activity, value: sitting_working, src: seen}
+  - t_ms: 2000
+    ops:
+      - {op: new, tmp: n1, type: OBJECT, cls: phone, desc: 黑色手机}
+      - {op: act, type: PUT_DOWN, subj: person_1, obj: n1, target: desk_1}
+  - t_ms: 9000
+    ops:
+      - {op: new, tmp: n1, type: OBJECT, cls: backpack, desc: 黑色双肩包}
+      - {op: act, type: PICK_UP, subj: person_1, obj: n1}
+      - {op: set, key: person_1.activity, value: packing, src: seen}
+  - t_ms: 11000
+    ops:
+      - {op: act, type: MOVING_TOWARD, subj: person_1, obj: door_1}
+      - {op: said, speaker: person_1, intent: info, content: 我得走了}
+  - t_ms: 15000
+    ops:
+      - {op: act, type: PICK_UP, subj: person_1, obj: phone_1}
+      - {op: set, key: person_1.activity, value: standing, src: seen}
+feedback:
+  - {t_ms: 17200, need_kind: possible_forgotten_item, kind: done,
+     confirm: {key: phone_1.location, value: {rel: HELD_BY, ref: person_1}}}
+expect:
+  deliveries: [{kind: possible_forgotten_item, mode: REMIND, after_ms: 11000, before_ms: 15000}]
+  edges_in_order: [instantiated, armed, fired, resolved]
+  max_decisions: 1
+  final: {phone_1.location: {value: {rel: HELD_BY, ref: person_1}, source: user_confirmed}}

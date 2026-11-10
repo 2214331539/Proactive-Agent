@@ -1,0 +1,19 @@
+{
+  "video": "living_room_02",
+  "note": "M3-Bench robot living_room_02 的主动机会标注（时间为视频秒）。 keywords：消息文本或机会描述含任一关键词才算命中这个机会。",
+  "opportunities": [
+    {
+      "id": "noodles",
+      "desc": "三分钟后提醒 Jack 泡面好了",
+      "label": "must_fire",
+      "L": 8,
+      "t_earliest": 1765,
+      "t_latest": 1800,
+      "evidence": "26:29 Jack: Hey robot remind me in three minutes that the instant noodles is ready.（之后无人再提）",
+      "keywords": [
+        "面",
+        "noodle"
+      ]
+    }
+  ]
+}

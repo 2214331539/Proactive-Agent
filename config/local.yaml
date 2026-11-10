@@ -1,0 +1,26 @@
+# 本机实测选型（2026-11-07，见 README“环境确认”）。用法：pa ... --config config/local.yaml
+# 中转（vm2api.tsingyuai.com）单次调用基线约 6–7 s，看图约 8–13 s，因此加大并发并放宽超时。
+perception:
+  provider: openai
+  model: gpt-6-sol
+  workers: 6
+  timeout_s: 45
+  extra: {reasoning_effort: low, max_completion_tokens: 2000}
+
+decision:
+  provider: llm               # Jev 预留：改成 provider: jev, model: jev-1.14.0，并在 .env 填 TYPESAFE_API_KEY
+  llm_provider: deepseek
+  model: deepseek-flash
+  timeout_s: 4                # LLMDecider 实际超时 = 3 × timeout_s
+
+response:
+  provider: llm
+  llm_provider: deepseek
+  model: deepseek-flash
+  strategy: prefetch_llm
+  ttft_fallback_ms: 600
+
+slow:
+  provider: none              # 情节摘要用确定性规则；要用 LLM 摘要改成 llm + 下面两项
+  llm_provider: openai
+  model: gpt-6-sol
